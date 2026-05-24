@@ -1,0 +1,3742 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AcrylCAD — アクリル板設計ツール</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2333;
+    --border: #2a3050;
+    --accent: #4f8ef7;
+    --accent2: #2dd4bf;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --text2: #8892a4;
+    --text3: #4a5568;
+    --panel: 280px;
+    --header: 44px;
+    --toolbar: 48px;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+    font-size: 13px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* ── Header ── */
+  #header {
+    height: var(--header);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  #header .logo {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+  }
+  #header .logo span { color: var(--text2); font-weight: 400; }
+  .hbtn {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    transition: background .15s;
+  }
+  .hbtn:hover { background: var(--border); }
+  .hbtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .hbtn.primary:hover { background: #3a7ce8; }
+  #header .spacer { flex: 1; }
+  #status-bar {
+    font-size: 11px;
+    color: var(--text2);
+    padding: 0 8px;
+    border-left: 1px solid var(--border);
+  }
+  /* ── Toolbar ── */
+  #toolbar {
+    height: var(--toolbar);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 4px;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .tbtn {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: all .15s;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .tbtn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
+  .tbtn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tbtn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    padding: 3px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 11px;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .tb-sep {
+    width: 1px; height: 28px;
+    background: var(--border);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+  /* ── Main layout ── */
+  #main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  /* ── Left panel ── */
+  #left-panel {
+    width: 200px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .panel-title {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  #object-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .obj-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    cursor: pointer;
+    gap: 8px;
+    border-left: 2px solid transparent;
+    transition: background .1s;
+  }
+  .obj-item:hover { background: var(--surface2); }
+  .obj-item.selected {
+    background: rgba(79,142,247,.12);
+    border-left-color: var(--accent);
+    color: var(--accent);
+  }
+  .obj-item .icon { font-size: 13px; opacity: 0.7; }
+  .obj-item .name { flex: 1; font-size: 12px; }
+  .obj-item .vis-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 12px; padding: 2px;
+  }
+  .obj-item .vis-btn:hover { color: var(--text); }
+  #left-bottom {
+    padding: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .add-plate-btn {
+    width: 100%;
+    padding: 7px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background .15s;
+  }
+  .add-plate-btn:hover { background: #3a7ce8; }
+  /* ── Canvas area ── */
+  #canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  #three-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  /* Overlay coords */
+  #coords-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(15,17,23,.85);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 11px;
+    color: var(--text2);
+    pointer-events: none;
+  }
+  #view-controls {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .vcbtn {
+    width: 32px; height: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: background .1s;
+  }
+  .vcbtn:hover { background: var(--surface2); color: var(--text); }
+  /* ── Right panel ── */
+  #right-panel {
+    width: var(--panel);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .ptab {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+    letter-spacing: 0.3px;
+  }
+  .ptab:hover { color: var(--text); }
+  .ptab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+  .tab-content.active { display: flex; }
+  /* Form elements */
+  .prop-group {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .prop-group-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .prop-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .prop-row:last-child { margin-bottom: 0; }
+  .prop-label {
+    width: 40px;
+    font-size: 11px;
+    color: var(--text2);
+    flex-shrink: 0;
+  }
+  .prop-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 6px;
+    font-size: 12px;
+    outline: none;
+    width: 0;
+    transition: border-color .15s;
+  }
+  .prop-input:focus { border-color: var(--accent); }
+  .prop-input[type=number] { -moz-appearance: textfield; }
+  .prop-input[type=number]::-webkit-outer-spin-button,
+  .prop-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .prop-unit { font-size: 10px; color: var(--text3); width: 20px; flex-shrink: 0; }
+  select.prop-input { cursor: pointer; }
+  .prop-check-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0;
+  }
+  .prop-check-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+  .prop-check-row label { font-size: 12px; cursor: pointer; }
+  .color-swatch {
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .color-swatch input[type=color] {
+    width: 40px; height: 40px;
+    border: none; background: none;
+    cursor: pointer;
+    margin: -6px;
+  }
+  .apply-btn {
+    width: 100%;
+    padding: 7px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+    transition: background .15s;
+  }
+  .apply-btn:hover { background: #3a7ce8; }
+  .apply-btn.danger { background: var(--danger); }
+  .apply-btn.danger:hover { background: #dc2626; }
+  .apply-btn.secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    margin-top: 4px;
+  }
+  .apply-btn.secondary:hover { background: var(--border); }
+  /* snap panel */
+  .snap-info {
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.7;
+  }
+  /* Vertex editor */
+  #vertex-panel {
+    padding: 8px 12px;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .vertex-list-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .vertex-list-item:hover { background: var(--surface2); }
+  .vertex-list-item.sel { background: rgba(79,142,247,.2); color: var(--accent); }
+  .vertex-badge {
+    width: 18px; height: 18px;
+    background: var(--accent);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    font-size: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .modal-body { padding: 16px 18px; }
+  .modal-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; display: block; }
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 7px 10px;
+    font-size: 13px;
+    outline: none;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+  select.form-input { cursor: pointer; }
+  /* Thickness selector */
+  .thickness-grid {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .th-btn {
+    padding: 6px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all .15s;
+  }
+  .th-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .th-btn.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* Snap indicator */
+  #snap-indicator {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(45,212,191,.15);
+    border: 1px solid var(--accent2);
+    border-radius: 5px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--accent2);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  #snap-indicator.show { opacity: 1; }
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 12px;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+  /* blueprint modal */
+  #blueprint-modal .modal { width: 700px; max-height: 90vh; }
+  /* scroll */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a4060; }
+  /* Draft editor tool buttons */
+  .draft-tool { background: var(--surface2); }
+  .draft-tool.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  #draft-editor-modal .modal { display:flex; flex-direction:column; }
+  .arc-info {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.6;
+    padding: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div class="logo">AcrylCAD <span>v1.0</span></div>
+  <div class="tb-sep"></div>
+  <button class="hbtn" onclick="saveProject()">💾 保存</button>
+  <button class="hbtn" onclick="loadProject()">📂 読込</button>
+  <button class="hbtn" onclick="exportBlueprints()">📐 図面出力</button>
+  <div class="spacer"></div>
+  <div id="status-bar">板: <span id="plate-count">0</span> 枚</div>
+</div>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <button class="tbtn active" id="tool-select" title="選択" onclick="setTool('select')">⬡</button>
+  <button class="tbtn" id="tool-move" title="移動" onclick="setTool('move')">✥</button>
+  <button class="tbtn" id="tool-rotate" title="回転" onclick="setTool('rotate')">↻</button>
+  <button class="tbtn" id="tool-scale" title="サイズ変更" onclick="setTool('scale')">⤢</button>
+  <button class="tbtn" id="tool-edit" title="細部編集" onclick="setTool('edit')">✏️</button>
+  <div class="tb-sep"></div>
+  <button class="tbtn" id="tool-snap" title="頂点スナップ" onclick="toggleSnapMode()">🧲</button>
+  <div class="tb-sep"></div>
+  <button class="tbtn" title="正面" onclick="setCameraView('front')">F</button>
+  <button class="tbtn" title="側面" onclick="setCameraView('side')">S</button>
+  <button class="tbtn" title="上面" onclick="setCameraView('top')">T</button>
+  <button class="tbtn" title="パース" onclick="setCameraView('persp')">P</button>
+  <div class="tb-sep"></div>
+  <button class="tbtn active" title="点を表示" onclick="toggleShowPoints()" id="tool-show-points">•</button>
+  <button class="tbtn active" title="辺を表示" onclick="toggleShowEdges()" id="tool-show-edges">⌗</button>
+  <button class="tbtn" title="グリッド表示" onclick="toggleGrid()" id="tool-grid">⊞</button>
+  <button class="tbtn" title="全体表示" onclick="fitAll()">⊡</button>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <!-- Left Panel -->
+  <div id="left-panel">
+    <div class="panel-title">オブジェクト</div>
+    <div id="object-list"></div>
+    <div id="left-bottom">
+      <button class="add-plate-btn" onclick="openAddPlateModal()">＋ 板を追加</button>
+      <button class="add-plate-btn" style="margin-top:6px;background:var(--accent2);color:#000" onclick="openDraftEditor(null)">📐 図面から板を作成</button>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-area">
+    <canvas id="three-canvas"></canvas>
+    <div id="coords-overlay">X: 0.0 &nbsp; Y: 0.0 &nbsp; Z: 0.0 mm</div>
+    <div id="snap-indicator">🧲 頂点スナップ</div>
+    <div id="view-controls">
+      <button class="vcbtn" title="ズームイン" onclick="zoomIn()">＋</button>
+      <button class="vcbtn" title="ズームアウト" onclick="zoomOut()">−</button>
+      <button class="vcbtn" title="リセット" onclick="resetCamera()">⊙</button>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div id="right-panel">
+    <div class="panel-tabs">
+      <div class="ptab active" onclick="switchTab('props')">プロパティ</div>
+      <div class="ptab" onclick="switchTab('vertex')">頂点・辺</div>
+      <div class="ptab" onclick="switchTab('snap')">スナップ</div>
+    </div>
+    <!-- Properties Tab -->
+    <div class="tab-content active" id="tab-props">
+      <div id="no-selection">板を選択してください</div>
+      <div id="selection-props" style="display:none">
+        <div class="prop-group">
+          <div class="prop-group-title">識別</div>
+          <div class="prop-row">
+            <div class="prop-label">名前</div>
+            <input type="text" class="prop-input" id="prop-name" onchange="updatePropName()">
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">色</div>
+            <div class="color-swatch"><input type="color" id="prop-color" onchange="updatePropColor()"></div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">厚さ</div>
+            <select class="prop-input" id="prop-thickness" onchange="updatePropThickness()">
+              <option value="1">1 mm</option>
+              <option value="2">2 mm</option>
+              <option value="3">3 mm</option>
+              <option value="5">5 mm</option>
+              <option value="10">10 mm</option>
+            </select>
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-group-title">位置 (mm)</div>
+          <div class="prop-row">
+            <div class="prop-label">X</div>
+            <input type="number" class="prop-input" id="prop-x" step="0.1" onchange="applyProps()">
+            <div class="prop-unit">mm</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Y</div>
+            <input type="number" class="prop-input" id="prop-y" step="0.1" onchange="applyProps()">
+            <div class="prop-unit">mm</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Z</div>
+            <input type="number" class="prop-input" id="prop-z" step="0.1" onchange="applyProps()">
+            <div class="prop-unit">mm</div>
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-group-title">寸法 (mm)</div>
+          <div class="prop-row">
+            <div class="prop-label">幅</div>
+            <input type="number" class="prop-input" id="prop-w" step="0.1" min="1" onchange="applyProps()">
+            <div class="prop-unit">mm</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">高さ</div>
+            <input type="number" class="prop-input" id="prop-h" step="0.1" min="1" onchange="applyProps()">
+            <div class="prop-unit">mm</div>
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-group-title">回転 (度)</div>
+          <div class="prop-row">
+            <div class="prop-label">X軸</div>
+            <input type="number" class="prop-input" id="prop-rx" step="0.5" onchange="applyProps()">
+            <div class="prop-unit">°</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Y軸</div>
+            <input type="number" class="prop-input" id="prop-ry" step="0.5" onchange="applyProps()">
+            <div class="prop-unit">°</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Z軸</div>
+            <input type="number" class="prop-input" id="prop-rz" step="0.5" onchange="applyProps()">
+            <div class="prop-unit">°</div>
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-check-row">
+            <input type="checkbox" id="prop-fullorder" onchange="toggleFullOrder()">
+            <label for="prop-fullorder">フルオーダー編集モード</label>
+          </div>
+        </div>
+        <div class="prop-group">
+          <button class="apply-btn danger" onclick="deleteSelected()">🗑 この板を削除</button>
+          <button class="apply-btn secondary" onclick="duplicateSelected()">⧉ 複製</button>
+          <button class="apply-btn secondary" onclick="openDraftEditor(selectedId)">📐 図面モードで編集</button>
+        </div>
+      </div>
+    </div>
+    <!-- Vertex Tab -->
+    <div class="tab-content" id="tab-vertex">
+      <div id="no-vertex-selection" style="padding:20px 12px;text-align:center;color:var(--text3);font-size:12px">板を選択してください</div>
+      <div id="vertex-content" style="display:none;flex-direction:column;flex:1">
+        <div class="prop-group">
+          <div class="prop-group-title">頂点一覧</div>
+          <div id="vertex-list"></div>
+        </div>
+        <div class="prop-group" id="vertex-edit-area" style="display:none">
+          <div class="prop-group-title">絶対座標で点を追加 (左上基準)</div>
+          <div class="prop-row">
+            <div class="prop-label">X</div>
+            <input type="number" class="prop-input" id="ve-dx" step="0.1" value="0">
+            <div class="prop-unit">mm</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">Y</div>
+            <input type="number" class="prop-input" id="ve-dy" step="0.1" value="0">
+            <div class="prop-unit">mm</div>
+          </div>
+          <button class="apply-btn" onclick="addPointFromVertex()">点を追加</button>
+          <div class="prop-group-title" style="margin-top:10px">選択頂点から角度で点を追加</div>
+          <div class="prop-row">
+            <div class="prop-label">角度</div>
+            <input type="number" class="prop-input" id="ve-angle" step="1" value="0">
+            <div class="prop-unit">°</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">長さ</div>
+            <input type="number" class="prop-input" id="ve-len" step="0.1" value="50">
+            <div class="prop-unit">mm</div>
+          </div>
+          <button class="apply-btn" onclick="addPointFromAngle()">角度で点を追加</button>
+          <div class="prop-group-title" style="margin-top:10px">辺との角度で点を追加</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px">辺の始点・終点インデックスを指定し、その辺からの角度と距離で点を追加</div>
+          <div class="prop-row">
+            <div class="prop-label">始点</div>
+            <input type="number" class="prop-input" id="ve-edge-ref1" step="1" value="0" min="0">
+            <div class="prop-unit">idx</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">終点</div>
+            <input type="number" class="prop-input" id="ve-edge-ref2" step="1" value="1" min="0">
+            <div class="prop-unit">idx</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">辺角</div>
+            <input type="number" class="prop-input" id="ve-edge-angle" step="1" value="90">
+            <div class="prop-unit">°</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">距離</div>
+            <input type="number" class="prop-input" id="ve-edge-dist" step="0.1" value="30">
+            <div class="prop-unit">mm</div>
+          </div>
+          <button class="apply-btn" onclick="addPointFromEdgeAngle()">辺角度で点を追加</button>
+        </div>
+        <div class="prop-group">
+          <div class="prop-group-title">弧を追加</div>
+          <div class="arc-info">選択した頂点を中心として弧を作成します</div>
+          <div class="prop-row">
+            <div class="prop-label">半径</div>
+            <input type="number" class="prop-input" id="arc-r" step="0.1" value="20" min="1">
+            <div class="prop-unit">mm</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">開始</div>
+            <input type="number" class="prop-input" id="arc-start" step="1" value="0" min="0" max="360">
+            <div class="prop-unit">°</div>
+          </div>
+          <div class="prop-row">
+            <div class="prop-label">終了</div>
+            <input type="number" class="prop-input" id="arc-end" step="1" value="90" min="0" max="360">
+            <div class="prop-unit">°</div>
+          </div>
+          <button class="apply-btn" onclick="addArcFromVertex()">弧を追加</button>
+        </div>
+        <div class="prop-group">
+          <div class="prop-group-title">辺を追加</div>
+          <div class="arc-info">2頂点を選択して辺を作成、辺で面を区切りカットできます</div>
+          <div id="edge-sel-status" style="font-size:11px;color:var(--accent2);padding:4px 0">頂点を2つ選択してください</div>
+          <button class="apply-btn" onclick="addEdgeBetweenSelected()" id="add-edge-btn" disabled>辺を追加</button>
+          <button class="apply-btn secondary" onclick="cutWithEdge()" id="cut-edge-btn" style="display:none">この辺でカット</button>
+        </div>
+      </div>
+    </div>
+    <!-- Snap Tab -->
+    <div class="tab-content" id="tab-snap">
+      <div class="prop-group">
+        <div class="prop-group-title">頂点スナップ</div>
+        <div class="snap-info">
+          1. ツールバーの🧲をONにする<br>
+          2. 移動したい板を選択<br>
+          3. その板の「スナップ元頂点」をクリック<br>
+          4. 全板の頂点が表示される<br>
+          5. 「スナップ先頂点」をクリック<br>
+          板が自動的に移動します
+        </div>
+        <div id="snap-state-display" style="margin-top:8px;font-size:11px;color:var(--accent2)">
+          スナップモード: OFF
+        </div>
+        <div id="snap-src-display" style="font-size:11px;color:var(--text2);margin-top:4px"></div>
+        <div id="snap-dst-display" style="font-size:11px;color:var(--text2);margin-top:2px"></div>
+        <button class="apply-btn secondary" onclick="clearSnapSelection()">スナップリセット</button>
+      </div>
+      <div class="prop-group">
+        <div class="prop-group-title">グリッドスナップ</div>
+        <div class="prop-check-row">
+          <input type="checkbox" id="grid-snap-en" onchange="toggleGridSnap()">
+          <label for="grid-snap-en">グリッドにスナップ</label>
+        </div>
+        <div class="prop-row">
+          <div class="prop-label">間隔</div>
+          <input type="number" class="prop-input" id="grid-snap-size" value="5" step="1" min="1" onchange="updateGridSnapSize()">
+          <div class="prop-unit">mm</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Plate Modal -->
+<div class="modal-overlay hidden" id="add-plate-modal">
+  <div class="modal">
+    <div class="modal-header">📋 板を追加</div>
+    <div class="modal-body">
+      <div class="form-group">
+        <div class="form-label">名前</div>
+        <input type="text" class="form-input" id="modal-name" value="板A" placeholder="板の名前">
+      </div>
+      <div class="form-group">
+        <div class="form-label">厚さ</div>
+        <div class="thickness-grid" id="thickness-grid">
+          <button class="th-btn selected" onclick="selectThickness(1)" data-t="1">1mm</button>
+          <button class="th-btn" onclick="selectThickness(2)" data-t="2">2mm</button>
+          <button class="th-btn" onclick="selectThickness(3)" data-t="3">3mm</button>
+          <button class="th-btn" onclick="selectThickness(5)" data-t="5">5mm</button>
+          <button class="th-btn" onclick="selectThickness(10)" data-t="10">10mm</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">幅 (mm)</div>
+          <input type="number" class="form-input" id="modal-w" value="100" min="1" step="1">
+        </div>
+        <div class="form-group">
+          <div class="form-label">高さ (mm)</div>
+          <input type="number" class="form-input" id="modal-h" value="100" min="1" step="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">色</div>
+        <input type="color" class="form-input" id="modal-color" value="#88ccff" style="height:36px;padding:2px 6px;cursor:pointer">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="hbtn" onclick="closeAddPlateModal()">キャンセル</button>
+      <button class="hbtn primary" onclick="confirmAddPlate()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- Blueprint Modal -->
+<div class="modal-overlay hidden" id="blueprint-modal">
+  <div class="modal" style="width:960px;max-height:96vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="justify-content:space-between">
+      <span>📐 図面出力（入稿用）</span>
+      <span style="font-size:11px;color:var(--text3)">はざいや / レーザーカット業者対応フォーマット</span>
+    </div>
+    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+      <!-- Left: plate list -->
+      <div style="width:140px;background:var(--surface2);border-right:1px solid var(--border);padding:8px;overflow-y:auto;flex-shrink:0">
+        <div class="prop-group-title" style="margin-bottom:6px">板を選択</div>
+        <div id="bp-plate-btns" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+      <!-- Center: canvas preview -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:6px 10px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-shrink:0">
+          <span style="font-size:11px;color:var(--text2)">スケール:</span>
+          <select id="bp-scale-select" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:2px 6px;font-size:11px" onchange="drawBlueprint(currentBpPlateId)">
+            <option value="auto">自動</option>
+            <option value="1">1:1</option>
+            <option value="0.5">1:2</option>
+            <option value="0.25">1:4</option>
+            <option value="0.1">1:10</option>
+          </select>
+          <span style="color:var(--border)">|</span>
+          <label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="bp-show-grid" checked onchange="drawBlueprint(currentBpPlateId)"> グリッド
+          </label>
+          <label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="bp-show-dims" checked onchange="drawBlueprint(currentBpPlateId)"> 寸法線
+          </label>
+          <label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="bp-show-pts" checked onchange="drawBlueprint(currentBpPlateId)"> 頂点番号
+          </label>
+          <span style="color:var(--border)">|</span>
+          <span id="bp-info-text" style="font-size:11px;color:var(--accent2)"></span>
+        </div>
+        <div style="flex:1;overflow:auto;background:#d8d8d8;display:flex;align-items:center;justify-content:center;padding:12px">
+          <canvas id="bp-canvas" style="background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.4);display:block"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="gap:8px;justify-content:space-between">
+      <div style="font-size:11px;color:var(--text3)">
+        カットライン：赤(RGB 255,0,0) 線幅0.01pt ／ 業界標準フォーマット
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="hbtn" onclick="downloadBlueprintSVG()">SVG保存（入稿推奨）</button>
+        <button class="hbtn" onclick="downloadBlueprintPNG()">PNG保存（高解像度）</button>
+        <button class="hbtn" onclick="document.getElementById('blueprint-modal').classList.add('hidden')">閉じる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Load file input (hidden) -->
+<input type="file" id="load-file-input" accept=".json" style="display:none" onchange="handleLoadFile(event)">
+
+<!-- Draft Editor Modal -->
+<div class="modal-overlay hidden" id="draft-editor-modal">
+  <div class="modal" style="width:980px;max-height:96vh;display:flex;flex-direction:column">
+    <div class="modal-header" style="justify-content:space-between">
+      <span>📐 図面エディタ</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span id="draft-plate-name" style="color:var(--accent);font-size:12px"></span>
+        <span style="color:var(--border)">|</span>
+        <span style="font-size:11px;color:var(--text3)">ビュー:</span>
+        <button class="hbtn draft-view-btn active" data-view="front" onclick="setDraftView('front')" style="padding:3px 8px;font-size:11px">正面 (XY)</button>
+        <button class="hbtn draft-view-btn" data-view="side" onclick="setDraftView('side')" style="padding:3px 8px;font-size:11px">右側面 (厚み)</button>
+        <button class="hbtn draft-view-btn" data-view="top" onclick="setDraftView('top')" style="padding:3px 8px;font-size:11px">上面 (XZ)</button>
+      </div>
+    </div>
+    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+      <!-- Canvas -->
+      <div style="flex:1;position:relative;background:#1a1a2e;overflow:hidden">
+        <canvas id="draft-canvas" style="display:block;cursor:crosshair"></canvas>
+        <div id="draft-coords" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.7);padding:3px 8px;border-radius:4px;font-size:11px;color:var(--text2);pointer-events:none">X: 0 Y: 0</div>
+        <div id="draft-view-label" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(79,142,247,.18);border:1px solid var(--accent);border-radius:4px;padding:2px 10px;font-size:11px;color:var(--accent);pointer-events:none">正面ビュー</div>
+        <div style="position:absolute;top:8px;left:8px;display:flex;gap:4px" id="draft-tool-btns">
+          <button class="hbtn draft-tool active" data-tool="select" onclick="setDraftTool('select')" title="選択">⬡</button>
+          <button class="hbtn draft-tool" data-tool="point" onclick="setDraftTool('point')" title="点を追加">•</button>
+          <button class="hbtn draft-tool" data-tool="arc" onclick="setDraftTool('arc')" title="弧を追加">◠</button>
+          <button class="hbtn draft-tool" data-tool="edge" onclick="setDraftTool('edge')" title="辺を追加">╱</button>
+          <button class="hbtn" onclick="draftUndo()" title="元に戻す">↩</button>
+          <button class="hbtn" onclick="draftClear()" title="全クリア" style="color:var(--danger)">✕ クリア</button>
+        </div>
+        <div style="position:absolute;top:8px;right:8px;display:flex;gap:4px;align-items:center">
+          <label style="font-size:11px;color:var(--text2)">グリッド</label>
+          <input type="number" id="draft-grid-size" value="10" min="1" step="1" style="width:45px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:2px 4px;font-size:11px" oninput="draftRedraw()">
+          <label style="font-size:11px;color:var(--text2)">mm</label>
+          <input type="checkbox" id="draft-snap-grid" checked onchange="draftRedraw()">
+          <label style="font-size:11px;color:var(--text2)">スナップ</label>
+          <span style="color:var(--border);margin:0 2px">|</span>
+          <input type="checkbox" id="draft-show-angle" onchange="draftRedraw()">
+          <label style="font-size:11px;color:var(--text2)">角度表示</label>
+        </div>
+      </div>
+      <!-- Right sidebar -->
+      <div style="width:220px;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;flex-shrink:0;padding:8px">
+        <div class="prop-group-title">板設定</div>
+        <div class="prop-row"><div class="prop-label">名前</div><input type="text" class="prop-input" id="draft-name" value="板"></div>
+        <div class="prop-row"><div class="prop-label">幅</div><input type="number" class="prop-input" id="draft-width" value="200" min="1" oninput="draftResizeBoard()"><div class="prop-unit">mm</div></div>
+        <div class="prop-row"><div class="prop-label">高さ</div><input type="number" class="prop-input" id="draft-height" value="150" min="1" oninput="draftResizeBoard()"><div class="prop-unit">mm</div></div>
+        <div class="prop-row"><div class="prop-label">厚さ</div>
+          <select class="prop-input" id="draft-thickness"><option value="1">1mm</option><option value="2">2mm</option><option value="3" selected>3mm</option><option value="5">5mm</option><option value="10">10mm</option></select>
+        </div>
+        <div class="prop-row"><div class="prop-label">色</div><input type="color" class="prop-input" id="draft-color" value="#88ccff" style="height:28px;padding:2px 4px;cursor:pointer"></div>
+        <hr style="border-color:var(--border);margin:8px 0">
+        <div class="prop-group-title">点を追加（絶対座標）</div>
+        <div class="prop-row"><div class="prop-label">X</div><input type="number" class="prop-input" id="draft-pt-x" step="0.1" value="0"><div class="prop-unit">mm</div></div>
+        <div class="prop-row"><div class="prop-label">Y</div><input type="number" class="prop-input" id="draft-pt-y" step="0.1" value="0"><div class="prop-unit">mm</div></div>
+        <button class="apply-btn" onclick="draftAddPointAbs()">点を追加</button>
+        <hr style="border-color:var(--border);margin:8px 0">
+        <div class="prop-group-title">辺角度で点を追加</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">辺P[i]→P[j]の方向をx°曲げ、P[j]から距離d先に点を追加</div>
+        <div class="prop-row"><div class="prop-label">P[i]</div><input type="number" class="prop-input" id="draft-ea-i" value="0" min="0" oninput="draftRedraw()"></div>
+        <div class="prop-row"><div class="prop-label">P[j]</div><input type="number" class="prop-input" id="draft-ea-j" value="1" min="0" oninput="draftRedraw()"></div>
+        <div class="prop-row"><div class="prop-label">曲げ角</div><input type="number" class="prop-input" id="draft-ea-ang" value="90" step="1" oninput="draftRedraw()"><div class="prop-unit">°</div></div>
+        <div class="prop-row"><div class="prop-label">距離</div><input type="number" class="prop-input" id="draft-ea-dist" value="30" step="0.1" oninput="draftRedraw()"><div class="prop-unit">mm</div></div>
+        <div class="prop-check-row" style="padding:2px 0 4px">
+          <input type="checkbox" id="draft-ea-preview" onchange="draftRedraw()">
+          <label for="draft-ea-preview" style="font-size:11px">プレビュー表示</label>
+        </div>
+        <button class="apply-btn" onclick="draftAddPointEdgeAngle()">辺角度で追加</button>
+        <hr style="border-color:var(--border);margin:8px 0">
+        <div class="prop-group-title">辺との交点に点を追加</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">辺P[i1]→P[j1]をx°曲げた線と辺P[i2]→P[j2]の交点</div>
+        <div class="prop-row"><div class="prop-label">P[i1]</div><input type="number" class="prop-input" id="draft-int-i1" value="0" min="0" oninput="draftRedraw()"></div>
+        <div class="prop-row"><div class="prop-label">P[j1]</div><input type="number" class="prop-input" id="draft-int-j1" value="1" min="0" oninput="draftRedraw()"></div>
+        <div class="prop-row"><div class="prop-label">曲げ角</div><input type="number" class="prop-input" id="draft-int-ang" value="0" step="1" oninput="draftRedraw()"><div class="prop-unit">°</div></div>
+        <div class="prop-row"><div class="prop-label">P[i2]</div><input type="number" class="prop-input" id="draft-int-i2" value="2" min="0" oninput="draftRedraw()"></div>
+        <div class="prop-row"><div class="prop-label">P[j2]</div><input type="number" class="prop-input" id="draft-int-j2" value="3" min="0" oninput="draftRedraw()"></div>
+        <div class="prop-check-row" style="padding:2px 0 4px">
+          <input type="checkbox" id="draft-int-preview" onchange="draftRedraw()">
+          <label for="draft-int-preview" style="font-size:11px">プレビュー表示</label>
+        </div>
+        <button class="apply-btn" onclick="draftAddIntersectionPoint()">交点に点を追加</button>
+        <hr style="border-color:var(--border);margin:8px 0">
+        <div class="prop-group-title">弧を追加</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">選択した点を中心として弧を作成</div>
+        <div class="prop-row"><div class="prop-label">半径</div><input type="number" class="prop-input" id="draft-arc-r" value="20" min="1" step="0.1"><div class="prop-unit">mm</div></div>
+        <div class="prop-row"><div class="prop-label">開始</div><input type="number" class="prop-input" id="draft-arc-s" value="0" min="0" max="360" step="1"><div class="prop-unit">°</div></div>
+        <div class="prop-row"><div class="prop-label">終了</div><input type="number" class="prop-input" id="draft-arc-e" value="90" min="0" max="360" step="1"><div class="prop-unit">°</div></div>
+        <button class="apply-btn" onclick="draftAddArc()">弧を追加</button>
+        <hr style="border-color:var(--border);margin:8px 0">
+        <div class="prop-group-title" id="draft-sel-title">選択中: なし</div>
+        <div id="draft-sel-info" style="font-size:11px;color:var(--text2)"></div>
+        <button class="apply-btn secondary" id="draft-del-sel-btn" style="display:none" onclick="draftDeleteSelected()">選択を削除</button>
+        <hr style="border-color:var(--border);margin:8px 0">
+        <div class="prop-group-title">点一覧</div>
+        <div id="draft-point-list" style="max-height:120px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div class="modal-footer" style="gap:8px">
+      <button class="hbtn" onclick="closeDraftEditor()">キャンセル</button>
+      <button class="hbtn primary" onclick="applyDraftToPlate()">✓ 3Dに適用</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// Global State
+// ═══════════════════════════════════════════════════════════════
+let scene, camera, renderer, raycaster, mouse;
+let orbitControls;
+let plates = []; // {id, name, width, height, thickness, x, y, z, rx, ry, rz, color, mesh, visible, fullOrder, customPoints, customEdges, customArcs}
+let selectedId = null;
+let currentTool = 'select';
+let snapMode = false;
+let snapSrc = null; // {plateId, vertexIndex}
+let snapDst = null;
+let gridEnabled = true;
+let gridMesh = null;
+let gridSnapEnabled = false;
+let gridSnapSize = 5;
+let plateCounter = 0;
+let selectedThicknessModal = 1;
+let selectedVertices = []; // for edge mode
+let selectedVertexIdx = null;
+let currentBpPlateId = null;
+
+// Transform state
+let isDragging = false;
+let dragStart = null;
+let dragPlane = null;
+let originalPos = null;
+
+// Display flags
+let showPoints = true;
+let showEdges = true;
+
+// Gizmo
+let gizmoGroup = null;
+let gizmoDragging = false;
+let gizmoAxis = null; // 'x','y','z'
+let gizmoMode = null; // 'move','rotate','scale'
+let gizmoDragStart = null;
+let gizmoDragStartVal = null;
+let vertexMarkers = null; // THREE.Group for vertex spheres
+let vertexMarkerMap = {}; // {plateId_vertexIdx: marker}
+
+// ═══════════════════════════════════════════════════════════════
+// Three.js Init
+// ═══════════════════════════════════════════════════════════════
+function initThree() {
+  const canvas = document.getElementById('three-canvas');
+  const area = document.getElementById('canvas-area');
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+  renderer.setSize(area.clientWidth, area.clientHeight);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0f1117);
+
+  camera = new THREE.PerspectiveCamera(45, area.clientWidth / area.clientHeight, 0.1, 10000);
+  camera.position.set(200, 200, 400);
+  camera.lookAt(0, 0, 0);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambient);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir.position.set(300, 400, 300);
+  scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0x88aaff, 0.3);
+  dir2.position.set(-200, -100, -200);
+  scene.add(dir2);
+
+  // Grid
+  buildGrid();
+
+  // Axes
+  const axesHelper = new THREE.AxesHelper(50);
+  scene.add(axesHelper);
+
+  // Simple orbit controls (manual)
+  setupOrbitControls();
+
+  animate();
+
+  window.addEventListener('resize', onResize);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('click', onCanvasClick);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+function buildGrid() {
+  if (gridMesh) { scene.remove(gridMesh); gridMesh = null; }
+  if (!gridEnabled) return;
+  const g = new THREE.GridHelper(1000, 100, 0x2a3050, 0x1e2333);
+  g.rotation.x = 0;
+  scene.add(g);
+  gridMesh = g;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  
+  // Update marker positions every frame
+  updateMarkerPositions();
+  
+  // Keep gizmo constant screen size
+  if (gizmoGroup) {
+    const p = getPlate(selectedId);
+    if (p) {
+      const dist = camera.position.distanceTo(gizmoGroup.position);
+      const s = dist * 0.025;
+      gizmoGroup.scale.setScalar(s);
+    }
+  }
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  const area = document.getElementById('canvas-area');
+  camera.aspect = area.clientWidth / area.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(area.clientWidth, area.clientHeight);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Orbit Controls (manual)
+// ═══════════════════════════════════════════════════════════════
+let orbit = { dragging: false, rightDrag: false, lastX: 0, lastY: 0,
+              theta: Math.PI/4, phi: Math.PI/4, radius: 500,
+              target: new THREE.Vector3(0,0,0), panStart: null };
+
+function setupOrbitControls() {
+  const canvas = document.getElementById('three-canvas');
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 1 || e.button === 2) {
+      orbit.rightDrag = true;
+      orbit.lastX = e.clientX; orbit.lastY = e.clientY;
+      if (e.button === 2) orbit.panning = true;
+      else orbit.panning = false;
+    } else if (e.button === 0 && e.altKey) {
+      orbit.dragging = true;
+      orbit.lastX = e.clientX; orbit.lastY = e.clientY;
+    }
+  });
+  window.addEventListener('mouseup', e => {
+    orbit.dragging = false; orbit.rightDrag = false;
+  });
+  window.addEventListener('mousemove', e => {
+    if (orbit.dragging || (orbit.rightDrag && !orbit.panning)) {
+      const dx = e.clientX - orbit.lastX;
+      const dy = e.clientY - orbit.lastY;
+      orbit.theta -= dx * 0.005;
+      orbit.phi = Math.max(0.05, Math.min(Math.PI - 0.05, orbit.phi - dy * 0.005));
+      orbit.lastX = e.clientX; orbit.lastY = e.clientY;
+      updateCamera();
+    } else if (orbit.rightDrag && orbit.panning) {
+      const dx = e.clientX - orbit.lastX;
+      const dy = e.clientY - orbit.lastY;
+      const right = new THREE.Vector3();
+      const up = new THREE.Vector3();
+      camera.getWorldDirection(new THREE.Vector3());
+      right.crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).normalize();
+      up.copy(camera.up).normalize();
+      const speed = orbit.radius * 0.001;
+      orbit.target.addScaledVector(right, -dx * speed);
+      orbit.target.addScaledVector(up, dy * speed);
+      orbit.lastX = e.clientX; orbit.lastY = e.clientY;
+      updateCamera();
+    }
+  });
+}
+
+function updateCamera() {
+  const x = orbit.target.x + orbit.radius * Math.sin(orbit.phi) * Math.sin(orbit.theta);
+  const y = orbit.target.y + orbit.radius * Math.cos(orbit.phi);
+  const z = orbit.target.z + orbit.radius * Math.sin(orbit.phi) * Math.cos(orbit.theta);
+  camera.position.set(x, y, z);
+  camera.lookAt(orbit.target);
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  orbit.radius = Math.max(10, Math.min(5000, orbit.radius * (1 + e.deltaY * 0.001)));
+  updateCamera();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Plate creation / geometry
+// ═══════════════════════════════════════════════════════════════
+function createPlateMesh(plate) {
+  // Remove old mesh
+  if (plate.mesh) { scene.remove(plate.mesh); }
+
+  let geometry;
+  if (plate.fullOrder && plate.customPoints && plate.customPoints.length >= 3) {
+    geometry = buildCustomGeometry(plate);
+  } else {
+    // Simple box: width, thickness, height (Y up)
+    geometry = new THREE.BoxGeometry(plate.width, plate.thickness, plate.height);
+  }
+
+  const mat = new THREE.MeshPhongMaterial({
+    color: new THREE.Color(plate.color),
+    transparent: true,
+    opacity: 0.82,
+    shininess: 80,
+    specular: new THREE.Color(0x333344),
+    side: THREE.FrontSide,
+    depthWrite: true,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1
+  });
+
+  const mesh = new THREE.Mesh(geometry, mat);
+  // For custom geometry: rotateX applied in geo, so Y position = plate.y (no thickness offset)
+  // For box geometry: center is at half-thickness up
+  const yPos = (plate.fullOrder && plate.customPoints && plate.customPoints.length >= 3)
+    ? plate.y
+    : plate.y + plate.thickness / 2;
+  mesh.position.set(plate.x, yPos, plate.z);
+  mesh.rotation.set(
+    THREE.MathUtils.degToRad(plate.rx),
+    THREE.MathUtils.degToRad(plate.ry),
+    THREE.MathUtils.degToRad(plate.rz)
+  );
+  mesh.userData.plateId = plate.id;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.visible = plate.visible !== false;
+
+  // Wireframe
+  const wf = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: 0x4f8ef7, linewidth: 1.5 })
+  );
+  wf.userData.isEdgeWireframe = true;
+  wf.visible = showEdges;
+  mesh.add(wf);
+
+  scene.add(mesh);
+  plate.mesh = mesh;
+  return mesh;
+}
+
+function buildCustomGeometry(plate) {
+  const pts = plate.customPoints.filter(p => p.type === 'point');
+  const edges = plate.customEdges || [];
+
+  // Try to build an ordered polygon loop from edges
+  let orderedPts = null;
+  if (edges.length >= 3) {
+    // Build adjacency list
+    const adj = {};
+    for (const [a, b] of edges) {
+      if (!adj[a]) adj[a] = [];
+      if (!adj[b]) adj[b] = [];
+      adj[a].push(b);
+      adj[b].push(a);
+    }
+    // Walk loop starting from node 0
+    const visited = new Set();
+    const loop = [];
+    let cur = parseInt(Object.keys(adj)[0]);
+    let prev = -1;
+    for (let i = 0; i < edges.length + 1; i++) {
+      loop.push(cur);
+      visited.add(cur);
+      const neighbors = (adj[cur] || []).filter(n => n !== prev && !visited.has(n));
+      if (neighbors.length === 0) break;
+      prev = cur;
+      cur = neighbors[0];
+    }
+    if (loop.length >= 3) {
+      orderedPts = loop.map(i => pts[i]).filter(Boolean);
+    }
+  }
+
+  // Fallback: use points in order
+  if (!orderedPts || orderedPts.length < 3) {
+    orderedPts = pts;
+  }
+
+  const shape = new THREE.Shape();
+  // Figure 2D plane: draft X→3D X, draft Y→3D Z (Y-up world)
+  // Center the shape so mesh.position is the plate origin
+  shape.moveTo(orderedPts[0].x, orderedPts[0].y);
+  for (let i = 1; i < orderedPts.length; i++) {
+    shape.lineTo(orderedPts[i].x, orderedPts[i].y);
+  }
+
+  // Handle arcs
+  for (const p of plate.customPoints) {
+    if (p.type === 'arc') {
+      shape.absarc(p.cx, p.cy, p.r,
+        THREE.MathUtils.degToRad(p.startAngle),
+        THREE.MathUtils.degToRad(p.endAngle), false);
+    }
+  }
+
+  shape.closePath();
+
+  // Extrude along Z in shape-space, then rotate so it lies flat in XZ plane
+  const extSettings = { depth: plate.thickness, bevelEnabled: false };
+  const geo = new THREE.ExtrudeGeometry(shape, extSettings);
+
+  // ExtrudeGeometry extrudes along +Z. Rotate so shape XY → world XZ (lying flat like a plate)
+  // Draft: X=width axis, Y=height axis → world: X=width, Z=height, Y=up(thickness)
+  geo.rotateX(-Math.PI / 2);
+
+  // Translate so (0,0) corner aligns with mesh origin
+  geo.translate(0, 0, 0);
+
+  return geo;
+}
+
+// 修正: デフォルト頂点を立方体の8点に
+function addPlate(cfg) {
+  const id = ++plateCounter;
+  const names = plates.map(p => p.name);
+  let name = cfg.name || `板${id}`;
+  let i = 2;
+  while (names.includes(name)) { name = (cfg.name || `板${id}`) + `_${i++}`; }
+
+  const plate = {
+    id,
+    name,
+    width: cfg.width || 100,
+    height: cfg.height || 100,
+    thickness: cfg.thickness || 3,
+    x: cfg.x || 0,
+    y: cfg.y || 0,
+    z: cfg.z || 0,
+    rx: cfg.rx || 0,
+    ry: cfg.ry || 0,
+    rz: cfg.rz || 0,
+    color: cfg.color || '#88ccff',
+    visible: true,
+    fullOrder: false,
+    customPoints: [],
+    customEdges: [],
+    customArcs: []
+  };
+
+  // デフォルト頂点を立方体の8点に
+  if (cfg.customPoints) {
+    plate.customPoints = cfg.customPoints;
+  } else {
+    // 3D立方体の8頂点（XYZ座標のセット）
+    // 正面(Z=0)と背面(Z=厚さ)の4点ずつ
+    const w = plate.width;
+    const h = plate.height;
+    const t = plate.thickness;
+    plate.customPoints = [
+      // 正面 (Z=0)
+      { type: 'point', x: 0,     y: 0,     z: 0 },     // P0: 左下前
+      { type: 'point', x: w,     y: 0,     z: 0 },     // P1: 右下前
+      { type: 'point', x: w,     y: h,     z: 0 },     // P2: 右上前
+      { type: 'point', x: 0,     y: h,     z: 0 },     // P3: 左上前
+      // 背面 (Z=厚さ)
+      { type: 'point', x: 0,     y: 0,     z: t },     // P4: 左下背
+      { type: 'point', x: w,     y: 0,     z: t },     // P5: 右下背
+      { type: 'point', x: w,     y: h,     z: t },     // P6: 右上背
+      { type: 'point', x: 0,     y: h,     z: t },     // P7: 左上背
+    ];
+  }
+
+  plates.push(plate);
+  createPlateMesh(plate);
+  refreshObjectList();
+  updatePlateCount();
+  selectPlate(id);
+  showToast(`「${plate.name}」を追加しました`);
+  return plate;
+}
+
+function refreshPlateMesh(plate) {
+  createPlateMesh(plate);
+  if (plate.id === selectedId) {
+    updateGizmo();
+    updateVertexMarkers();
+  }
+}
+
+function updatePlateCount() {
+  document.getElementById('plate-count').textContent = plates.length;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Object List
+// ═══════════════════════════════════════════════════════════════
+function refreshObjectList() {
+  const list = document.getElementById('object-list');
+  list.innerHTML = '';
+  plates.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'obj-item' + (p.id === selectedId ? ' selected' : '');
+    div.innerHTML = `
+      <span class="icon">▭</span>
+      <span class="name" style="color:${p.id===selectedId?'inherit':p.color}">${p.name}</span>
+      <button class="vis-btn" onclick="toggleVisibility(${p.id},event)" title="表示/非表示">${p.visible!==false?'👁':'🙈'}</button>
+    `;
+    div.addEventListener('click', () => selectPlate(p.id));
+    list.appendChild(div);
+  });
+}
+
+function toggleVisibility(id, e) {
+  e.stopPropagation();
+  const p = getPlate(id);
+  if (!p) return;
+  p.visible = !p.visible;
+  if (p.mesh) p.mesh.visible = p.visible;
+  refreshObjectList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Selection
+// ═══════════════════════════════════════════════════════════════
+function selectPlate(id) {
+  // Deselect old
+  if (selectedId) {
+    const old = getPlate(selectedId);
+    if (old && old.mesh) {
+      old.mesh.material.emissive = new THREE.Color(0x000000);
+    }
+  }
+  selectedId = id;
+  const p = getPlate(id);
+  if (p && p.mesh) {
+    p.mesh.material.emissive = new THREE.Color(0x1a2a4a);
+  }
+  refreshObjectList();
+  updatePropsPanel();
+  updateVertexPanel();
+  updateGizmo();
+  updateVertexMarkers();
+}
+
+function deselectAll() {
+  if (selectedId) {
+    const old = getPlate(selectedId);
+    if (old && old.mesh) old.mesh.material.emissive = new THREE.Color(0x000000);
+  }
+  selectedId = null;
+  refreshObjectList();
+  updatePropsPanel();
+  updateVertexPanel();
+  removeGizmo();
+  removeVertexMarkers();
+}
+
+function getPlate(id) { return plates.find(p => p.id === id); }
+
+// ═══════════════════════════════════════════════════════════════
+// Properties Panel
+// ═══════════════════════════════════════════════════════════════
+function updatePropsPanel() {
+  const noSel = document.getElementById('no-selection');
+  const selProp = document.getElementById('selection-props');
+  if (!selectedId) {
+    noSel.style.display = ''; selProp.style.display = 'none'; return;
+  }
+  noSel.style.display = 'none'; selProp.style.display = '';
+  const p = getPlate(selectedId);
+  if (!p) return;
+  document.getElementById('prop-name').value = p.name;
+  document.getElementById('prop-color').value = p.color;
+  document.getElementById('prop-thickness').value = p.thickness;
+  document.getElementById('prop-x').value = p.x.toFixed(2);
+  document.getElementById('prop-y').value = p.y.toFixed(2);
+  document.getElementById('prop-z').value = p.z.toFixed(2);
+  document.getElementById('prop-w').value = p.width.toFixed(2);
+  document.getElementById('prop-h').value = p.height.toFixed(2);
+  document.getElementById('prop-rx').value = p.rx.toFixed(2);
+  document.getElementById('prop-ry').value = p.ry.toFixed(2);
+  document.getElementById('prop-rz').value = p.rz.toFixed(2);
+  document.getElementById('prop-fullorder').checked = p.fullOrder;
+}
+
+function applyProps() {
+  const p = getPlate(selectedId);
+  if (!p) return;
+  p.x = parseFloat(document.getElementById('prop-x').value) || 0;
+  p.y = parseFloat(document.getElementById('prop-y').value) || 0;
+  p.z = parseFloat(document.getElementById('prop-z').value) || 0;
+  p.width = Math.max(1, parseFloat(document.getElementById('prop-w').value) || 1);
+  p.height = Math.max(1, parseFloat(document.getElementById('prop-h').value) || 1);
+  p.rx = parseFloat(document.getElementById('prop-rx').value) || 0;
+  p.ry = parseFloat(document.getElementById('prop-ry').value) || 0;
+  p.rz = parseFloat(document.getElementById('prop-rz').value) || 0;
+  // Update default custom points if not fullOrder
+  if (!p.fullOrder) {
+    const w = p.width, h = p.height, t = p.thickness;
+    p.customPoints = [
+      { type: 'point', x: 0,     y: 0,     z: 0 },
+      { type: 'point', x: w,     y: 0,     z: 0 },
+      { type: 'point', x: w,     y: h,     z: 0 },
+      { type: 'point', x: 0,     y: h,     z: 0 },
+      { type: 'point', x: 0,     y: 0,     z: t },
+      { type: 'point', x: w,     y: 0,     z: t },
+      { type: 'point', x: w,     y: h,     z: t },
+      { type: 'point', x: 0,     y: h,     z: t },
+    ];
+  }
+  refreshPlateMesh(p);
+}
+
+function updatePropName() {
+  const p = getPlate(selectedId);
+  if (!p) return;
+  p.name = document.getElementById('prop-name').value;
+  refreshObjectList();
+}
+
+function updatePropColor() {
+  const p = getPlate(selectedId);
+  if (!p) return;
+  p.color = document.getElementById('prop-color').value;
+  if (p.mesh) p.mesh.material.color = new THREE.Color(p.color);
+  refreshObjectList();
+}
+
+function updatePropThickness() {
+  const p = getPlate(selectedId);
+  if (!p) return;
+  p.thickness = parseInt(document.getElementById('prop-thickness').value);
+  refreshPlateMesh(p);
+}
+
+function toggleFullOrder() {
+  const p = getPlate(selectedId);
+  if (!p) return;
+  p.fullOrder = document.getElementById('prop-fullorder').checked;
+  if (p.fullOrder && p.customPoints.length === 0) {
+    const w = p.width, h = p.height, t = p.thickness;
+    p.customPoints = [
+      { type: 'point', x: 0,     y: 0,     z: 0 },
+      { type: 'point', x: w,     y: 0,     z: 0 },
+      { type: 'point', x: w,     y: h,     z: 0 },
+      { type: 'point', x: 0,     y: h,     z: 0 },
+      { type: 'point', x: 0,     y: 0,     z: t },
+      { type: 'point', x: w,     y: 0,     z: t },
+      { type: 'point', x: w,     y: h,     z: t },
+      { type: 'point', x: 0,     y: h,     z: t },
+    ];
+  }
+  updateVertexPanel();
+  refreshPlateMesh(p);
+}
+
+function deleteSelected() {
+  if (!selectedId) { showToast('板が選択されていません'); return; }
+  const p = getPlate(selectedId);
+  if (!p) return;
+  removeGizmo();
+  removeVertexMarkers();
+  if (p.mesh) scene.remove(p.mesh);
+  const name = p.name;
+  plates = plates.filter(x => x.id !== selectedId);
+  selectedId = null;
+  selectedVertices = [];
+  selectedVertexIdx = null;
+  updatePropsPanel();
+  updateVertexPanel();
+  refreshObjectList();
+  updatePlateCount();
+  showToast(`「${name}」を削除しました`);
+}
+
+function duplicateSelected() {
+  if (!selectedId) return;
+  const p = getPlate(selectedId);
+  if (!p) return;
+  const copy = JSON.parse(JSON.stringify(p));
+  copy.id = undefined; copy.mesh = undefined;
+  copy.x += 20; copy.z += 20;
+  copy.name = p.name + '_コピー';
+  addPlate(copy);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Vertex Panel
+// ═══════════════════════════════════════════════════════════════
+function updateVertexPanel() {
+  const noSel = document.getElementById('no-vertex-selection');
+  const content = document.getElementById('vertex-content');
+  if (!selectedId) {
+    noSel.style.display = ''; content.style.display = 'none'; return;
+  }
+  const p = getPlate(selectedId);
+  noSel.style.display = 'none';
+  content.style.display = 'flex';
+
+  const list = document.getElementById('vertex-list');
+  list.innerHTML = '';
+  const pts = p.customPoints || [];
+  pts.forEach((pt, i) => {
+    if (pt.type !== 'point') return;
+    const div = document.createElement('div');
+    div.className = 'vertex-list-item' + (selectedVertices.includes(i) ? ' sel' : '');
+    const z = pt.z !== undefined ? ` Z:${pt.z.toFixed(1)}` : '';
+    div.innerHTML = `<div class="vertex-badge">${i}</div><span>X:${pt.x.toFixed(1)} Y:${pt.y.toFixed(1)}${z}</span>`;
+    div.onclick = () => {
+      if (selectedVertices.includes(i)) {
+        selectedVertices = selectedVertices.filter(x => x !== i);
+        selectedVertexIdx = null;
+      } else {
+        if (selectedVertices.length >= 2) selectedVertices = [selectedVertices[1]];
+        selectedVertices.push(i);
+        selectedVertexIdx = i;
+      }
+      updateVertexPanel();
+      updateEdgeStatus();
+      updateVertexMarkers();
+    };
+    list.appendChild(div);
+  });
+
+  const editArea = document.getElementById('vertex-edit-area');
+  editArea.style.display = selectedVertexIdx !== null ? '' : 'none';
+}
+
+function updateEdgeStatus() {
+  const st = document.getElementById('edge-sel-status');
+  const addBtn = document.getElementById('add-edge-btn');
+  const cutBtn = document.getElementById('cut-edge-btn');
+  if (selectedVertices.length === 2) {
+    const p = getPlate(selectedId);
+    const a = selectedVertices[0], b = selectedVertices[1];
+    st.textContent = `頂点 ${a} → ${b} 選択済み`;
+    addBtn.disabled = false;
+    // Check if edge already exists
+    const exists = (p.customEdges || []).some(e =>
+      (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
+    cutBtn.style.display = exists ? '' : 'none';
+  } else {
+    st.textContent = `頂点を2つ選択してください (${selectedVertices.length}/2)`;
+    addBtn.disabled = true;
+    cutBtn.style.display = 'none';
+  }
+}
+
+function addPointFromVertex() {
+  if (selectedVertexIdx === null) return;
+  const p = getPlate(selectedId);
+  if (!p) return;
+  const ax = parseFloat(document.getElementById('ve-dx').value) || 0;
+  const ay = parseFloat(document.getElementById('ve-dy').value) || 0;
+  p.customPoints.push({ type: 'point', x: ax, y: ay, z: 0 });
+  updateVertexPanel();
+  updateVertexMarkers();
+  refreshPlateMesh(p);
+  showToast('点を追加しました');
+}
+
+function addPointFromAngle() {
+  if (selectedVertexIdx === null) return;
+  const p = getPlate(selectedId);
+  if (!p) return;
+  const base = p.customPoints[selectedVertexIdx];
+  const angle = parseFloat(document.getElementById('ve-angle').value) || 0;
+  const len = parseFloat(document.getElementById('ve-len').value) || 50;
+  const rad = THREE.MathUtils.degToRad(angle);
+  const nx = base.x + len * Math.cos(rad);
+  const ny = base.y + len * Math.sin(rad);
+  p.customPoints.push({ type: 'point', x: nx, y: ny, z: base.z || 0 });
+  updateVertexPanel();
+  updateVertexMarkers();
+  refreshPlateMesh(p);
+  showToast(`角度${angle}°, 長さ${len}mmで点を追加しました`);
+}
+
+function addPointFromEdgeAngle() {
+  const p = getPlate(selectedId);
+  if (!p) return;
+  const i1 = parseInt(document.getElementById('ve-edge-ref1').value);
+  const i2 = parseInt(document.getElementById('ve-edge-ref2').value);
+  const pts = p.customPoints.filter(pt => pt.type === 'point');
+  if (isNaN(i1) || isNaN(i2) || i1 >= pts.length || i2 >= pts.length) {
+    showToast('有効な頂点インデックスを入力してください'); return;
+  }
+  const a = pts[i1], b = pts[i2];
+  const edgeAngle = Math.atan2(b.y - a.y, b.x - a.x);
+  const relAngle = THREE.MathUtils.degToRad(parseFloat(document.getElementById('ve-edge-angle').value) || 0);
+  const dist = parseFloat(document.getElementById('ve-edge-dist').value) || 0;
+  const totalAngle = edgeAngle + relAngle;
+  const nx = a.x + dist * Math.cos(totalAngle);
+  const ny = a.y + dist * Math.sin(totalAngle);
+  p.customPoints.push({ type: 'point', x: parseFloat(nx.toFixed(3)), y: parseFloat(ny.toFixed(3)), z: a.z || 0 });
+  updateVertexPanel();
+  updateVertexMarkers();
+  refreshPlateMesh(p);
+  showToast(`辺基準で点を追加しました (${nx.toFixed(1)}, ${ny.toFixed(1)})`);
+}
+
+function addArcFromVertex() {
+  if (selectedVertexIdx === null) return;
+  const p = getPlate(selectedId);
+  if (!p) return;
+  const center = p.customPoints[selectedVertexIdx];
+  const r = parseFloat(document.getElementById('arc-r').value) || 20;
+  const startAngle = parseFloat(document.getElementById('arc-start').value) || 0;
+  const endAngle = parseFloat(document.getElementById('arc-end').value) || 90;
+
+  p.customPoints.push({
+    type: 'arc',
+    cx: center.x, cy: center.y,
+    r, startAngle, endAngle
+  });
+
+  // Add endpoints as points if not 360
+  if (Math.abs(endAngle - startAngle) < 360) {
+    const sRad = THREE.MathUtils.degToRad(startAngle);
+    const eRad = THREE.MathUtils.degToRad(endAngle);
+    p.customPoints.push({ type: 'point', x: center.x + r * Math.cos(sRad), y: center.y + r * Math.sin(sRad), z: center.z || 0 });
+    p.customPoints.push({ type: 'point', x: center.x + r * Math.cos(eRad), y: center.y + r * Math.sin(eRad), z: center.z || 0 });
+  }
+
+  updateVertexPanel();
+  updateVertexMarkers();
+  refreshPlateMesh(p);
+  showToast('弧を追加しました');
+}
+
+function addEdgeBetweenSelected() {
+  if (selectedVertices.length < 2) return;
+  const p = getPlate(selectedId);
+  if (!p) return;
+  if (!p.customEdges) p.customEdges = [];
+  p.customEdges.push([...selectedVertices]);
+  updateEdgeStatus();
+  showToast(`辺 ${selectedVertices[0]}-${selectedVertices[1]} を追加しました`);
+}
+
+function cutWithEdge() {
+  showToast('カット機能: 辺で面を分割します（開発中）');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Tool switching
+// ═══════════════════════════════════════════════════════════════
+function setTool(t) {
+  currentTool = t;
+  ['select','move','rotate','scale','edit'].forEach(id => {
+    const btn = document.getElementById('tool-' + id);
+    if (btn) btn.classList.toggle('active', id === t);
+  });
+  const canvas = document.getElementById('three-canvas');
+  const cursors = { select: 'default', move: 'move', rotate: 'crosshair', scale: 'ew-resize', edit: 'cell' };
+  canvas.style.cursor = cursors[t] || 'default';
+  updateGizmo();
+}
+
+function toggleSnapMode() {
+  snapMode = !snapMode;
+  document.getElementById('tool-snap').classList.toggle('active', snapMode);
+  document.getElementById('snap-indicator').classList.toggle('show', snapMode);
+  document.getElementById('snap-state-display').textContent = `スナップモード: ${snapMode ? 'ON 🟢' : 'OFF'}`;
+  if (!snapMode) {
+    clearSnapSelection();
+  } else {
+    showToast('スナップモード ON: 移動元の板を選択し、基準頂点をクリック');
+  }
+  updateVertexMarkers();
+}
+
+function clearSnapSelection() {
+  snapSrc = null; snapDst = null;
+  document.getElementById('snap-src-display').textContent = '';
+  document.getElementById('snap-dst-display').textContent = '';
+}
+
+function toggleGrid() {
+  gridEnabled = !gridEnabled;
+  document.getElementById('tool-grid').classList.toggle('active', gridEnabled);
+  buildGrid();
+}
+
+function toggleGridSnap() {
+  gridSnapEnabled = document.getElementById('grid-snap-en').checked;
+}
+
+function updateGridSnapSize() {
+  gridSnapSize = parseFloat(document.getElementById('grid-snap-size').value) || 5;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Mouse events & Interaction
+// ═══════════════════════════════════════════════════════════════
+let moveStart = null;
+let moveStartPos = null;
+
+function onMouseMove(e) {
+  const rect = e.target.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+  // Update coords overlay
+  const worldPos = getMouseWorldPos(e);
+  if (worldPos) {
+    document.getElementById('coords-overlay').innerHTML =
+      `X: ${worldPos.x.toFixed(1)} &nbsp; Y: ${worldPos.y.toFixed(1)} &nbsp; Z: ${worldPos.z.toFixed(1)} mm`;
+  }
+
+  // Gizmo drag
+  if (gizmoDragging && gizmoAxis && selectedId) {
+    handleGizmoDrag(e);
+    return;
+  }
+
+  // Handle dragging for move (free drag on canvas, kept as fallback)
+  if (isDragging && moveStart && selectedId && currentTool === 'move') {
+    const p = getPlate(selectedId);
+    if (!p) return;
+    const dx = (e.clientX - moveStart.x);
+    const dy = (e.clientY - moveStart.y);
+    const speed = orbit.radius * 0.001;
+
+    const right = new THREE.Vector3();
+    right.crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).normalize();
+
+    p.x = moveStartPos.x + right.x * dx * speed - right.z * dy * speed * 0.3;
+    p.z = moveStartPos.z + right.z * dx * speed + right.x * dy * speed * 0.3;
+
+    if (gridSnapEnabled) {
+      p.x = Math.round(p.x / gridSnapSize) * gridSnapSize;
+      p.z = Math.round(p.z / gridSnapSize) * gridSnapSize;
+    }
+
+    if (p.mesh) p.mesh.position.set(p.x, p.y + p.thickness / 2, p.z);
+    updateGizmo();
+    updateVertexMarkers();
+    updatePropsPanel();
+  }
+}
+
+function onMouseDown(e) {
+  if (e.button !== 0) return;
+  if (e.altKey) return;
+
+  // Check gizmo hit first
+  if (gizmoGroup && (currentTool === 'move' || currentTool === 'rotate' || currentTool === 'scale')) {
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(gizmoGroup.children, true);
+    if (hits.length > 0) {
+      let obj = hits[0].object;
+      while (obj && !obj.userData.gizmoAxis) obj = obj.parent;
+      if (obj && obj.userData.gizmoAxis) {
+        gizmoDragging = true;
+        gizmoAxis = obj.userData.gizmoAxis;
+        gizmoMode = currentTool;
+        gizmoDragStart = { x: e.clientX, y: e.clientY };
+        const p = getPlate(selectedId);
+        gizmoDragStartVal = { x: p.x, y: p.y, z: p.z, rx: p.rx, ry: p.ry, rz: p.rz, w: p.width, h: p.height };
+        document.getElementById('three-canvas').style.cursor = 'grabbing';
+        return;
+      }
+    }
+  }
+
+  if (currentTool === 'move' && selectedId) {
+    const p = getPlate(selectedId);
+    if (p) {
+      isDragging = true;
+      moveStart = { x: e.clientX, y: e.clientY };
+      moveStartPos = { x: p.x, y: p.y, z: p.z };
+    }
+  }
+}
+
+function onMouseUp(e) {
+  if (gizmoDragging) {
+    gizmoDragging = false;
+    gizmoAxis = null;
+    gizmoMode = null;
+    const cursors = { select: 'default', move: 'move', rotate: 'crosshair', scale: 'ew-resize', edit: 'cell' };
+    document.getElementById('three-canvas').style.cursor = cursors[currentTool] || 'default';
+  }
+  isDragging = false;
+  moveStart = null;
+}
+
+function onCanvasClick(e) {
+  if (e.altKey || isDragging || gizmoDragging) return;
+  if (Math.abs(e.movementX) > 3 || Math.abs(e.movementY) > 3) return;
+
+  raycaster.setFromCamera(mouse, camera);
+  const meshes = plates.filter(p => p.mesh && p.visible !== false).map(p => p.mesh);
+  const intersects = raycaster.intersectObjects(meshes, true);
+
+  if (intersects.length > 0) {
+    let obj = intersects[0].object;
+    while (obj && !obj.userData.plateId) obj = obj.parent;
+    if (obj && obj.userData.plateId) {
+      const plateId = obj.userData.plateId;
+      if (snapMode && selectedId) {
+        handleSnapClick(plateId, intersects[0].point);
+      } else {
+        selectPlate(plateId);
+      }
+      return;
+    }
+  }
+  if (!snapMode) deselectAll();
+}
+
+function handleSnapClick(clickedPlateId, point) {
+  if (!selectedId) return;
+  const movingPlate = getPlate(selectedId);
+  if (!movingPlate) return;
+
+  if (!snapSrc) {
+    // Step 1: Pick source vertex from moving plate
+    const verts = getPlateWorldVertices(movingPlate);
+    const closest = findClosestVertex(verts, point);
+    snapSrc = { plateId: selectedId, vertexIndex: closest.idx, world: closest.pos };
+    document.getElementById('snap-src-display').textContent =
+      `スナップ元: ${movingPlate.name} 頂点${closest.idx}`;
+    // Step 2: Show all plate vertices
+    showToast('スナップ先の頂点をクリックしてください');
+    updateVertexMarkers();
+  } else {
+    // Step 3: Pick destination vertex from any plate and execute
+    const dstPlate = getPlate(clickedPlateId);
+    if (!dstPlate) return;
+    const verts = getPlateWorldVertices(dstPlate);
+    const closest = findClosestVertex(verts, point);
+    snapDst = { plateId: clickedPlateId, vertexIndex: closest.idx, world: closest.pos };
+    document.getElementById('snap-dst-display').textContent =
+      `スナップ先: ${dstPlate.name} 頂点${closest.idx}`;
+
+    // Apply snap: move movingPlate so snapSrc.world → snapDst.world
+    const src = snapSrc.world;
+    const dst = snapDst.world;
+    const dx = dst.x - src.x;
+    const dy = dst.y - src.y;
+    const dz = dst.z - src.z;
+    movingPlate.x += dx;
+    movingPlate.y += dy;
+    movingPlate.z += dz;
+    refreshPlateMesh(movingPlate);
+    updatePropsPanel();
+    updateVertexMarkers();
+    showToast(`スナップ完了: ${movingPlate.name} → ${dstPlate.name}`);
+    clearSnapSelection();
+  }
+}
+
+function getPlateWorldVertices(plate) {
+  // customPoints の type:'point' を世界座標に変換して返す
+  const pts = (plate.customPoints || []).filter(p => p.type === 'point');
+  return pts.map(pt => computeVertexWorldPos(plate, pt));
+}
+
+function findClosestVertex(verts, point) {
+  let minD = Infinity, idx = 0;
+  verts.forEach((v, i) => {
+    const d = v.distanceTo(point);
+    if (d < minD) { minD = d; idx = i; }
+  });
+  return { idx, pos: verts[idx] };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Vertex World Position Computation
+// ═══════════════════════════════════════════════════════════════
+function computeVertexWorldPos(plate, pt) {
+  // pt = {type:'point', x, y, z?} の3D座標
+  // または {type:'point', x, y} の2D座標（z=0と仮定）
+  const local = new THREE.Vector3(
+    pt.x || 0,
+    pt.y || 0,
+    pt.z || 0  // 3D立方体の場合はz座標がある
+  );
+  
+  // メッシュの回転を適用
+  local.applyEuler(new THREE.Euler(
+    THREE.MathUtils.degToRad(plate.rx),
+    THREE.MathUtils.degToRad(plate.ry),
+    THREE.MathUtils.degToRad(plate.rz)
+  ));
+  
+  // メッシュの位置を適用
+  return new THREE.Vector3(
+    plate.x + local.x,
+    plate.y + local.y,
+    plate.z + local.z
+  );
+}
+
+// Update marker positions every frame
+function updateMarkerPositions() {
+  for (const key in vertexMarkerMap) {
+    const [plateIdStr, idxStr] = key.split('_');
+    const plateId = parseInt(plateIdStr);
+    const idx = parseInt(idxStr);
+    const plate = getPlate(plateId);
+    if (!plate) continue;
+    
+    const pt = plate.customPoints?.[idx];
+    if (!pt || pt.type !== 'point') continue;
+    
+    const marker = vertexMarkerMap[key];
+    const worldPos = computeVertexWorldPos(plate, pt);
+    marker.position.copy(worldPos);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Gizmo (Blender-style transform handles)
+// ═══════════════════════════════════════════════════════════════
+function removeGizmo() {
+  if (gizmoGroup) { scene.remove(gizmoGroup); gizmoGroup = null; }
+}
+
+function updateGizmo() {
+  removeGizmo();
+  if (!selectedId) return;
+  if (currentTool !== 'move' && currentTool !== 'rotate' && currentTool !== 'scale') return;
+  const p = getPlate(selectedId);
+  if (!p || !p.mesh) return;
+
+  gizmoGroup = new THREE.Group();
+  gizmoGroup.userData.isGizmo = true;
+
+  const cx = p.x, cy = p.y + p.thickness / 2, cz = p.z;
+  gizmoGroup.position.set(cx, cy, cz);
+
+  const arrowLen = Math.max(18, orbit.radius * 0.032);
+  const headLen = arrowLen * 0.22;
+  const headR   = arrowLen * 0.07;
+  const shaftR  = arrowLen * 0.025;
+
+  const axes = [
+    { axis: 'x', dir: new THREE.Vector3(1,0,0), color: 0xff3333 },
+    { axis: 'y', dir: new THREE.Vector3(0,1,0), color: 0x33cc44 },
+    { axis: 'z', dir: new THREE.Vector3(0,0,1), color: 0x3399ff },
+  ];
+
+  axes.forEach(({ axis, dir, color }) => {
+    const mat = new THREE.MeshPhongMaterial({ color, depthTest: false, transparent: true, opacity: 0.92 });
+
+    // Shaft
+    const shaftGeo = new THREE.CylinderGeometry(shaftR, shaftR, arrowLen - headLen, 8);
+    const shaft = new THREE.Mesh(shaftGeo, mat);
+
+    // Head: cone for move, box for scale, torus for rotate
+    let head;
+    if (currentTool === 'move') {
+      head = new THREE.Mesh(new THREE.ConeGeometry(headR, headLen, 10), mat);
+    } else if (currentTool === 'scale') {
+      head = new THREE.Mesh(new THREE.BoxGeometry(headR*2, headLen, headR*2), mat);
+    } else { // rotate — flat disc
+      head = new THREE.Mesh(new THREE.CylinderGeometry(headR*1.8, headR*1.8, headLen*0.4, 20), mat);
+    }
+
+    // Group shaft+head, orient along axis
+    const arrow = new THREE.Group();
+    arrow.userData.gizmoAxis = axis;
+    mat.userData = { axis };
+
+    const halfShaft = (arrowLen - headLen) / 2;
+    shaft.position.y = halfShaft;
+    head.position.y  = arrowLen - headLen / 2;
+    arrow.add(shaft);
+    arrow.add(head);
+    // Shaft and head need gizmoAxis for raycasting
+    shaft.userData.gizmoAxis = axis;
+    head.userData.gizmoAxis  = axis;
+
+    // Rotate group to point along correct axis
+    if (axis === 'x') arrow.rotation.z = -Math.PI / 2;
+    if (axis === 'z') arrow.rotation.x =  Math.PI / 2;
+
+    // Invisible larger hit cylinder
+    const hitMat = new THREE.MeshBasicMaterial({ visible: false, depthTest: false });
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(headR*2.5, headR*2.5, arrowLen, 8), hitMat);
+    hit.position.y = arrowLen / 2;
+    hit.userData.gizmoAxis = axis;
+    arrow.add(hit);
+
+    gizmoGroup.add(arrow);
+  });
+
+  // Render on top
+  gizmoGroup.renderOrder = 999;
+  gizmoGroup.traverse(o => { if (o.isMesh) o.renderOrder = 999; });
+  scene.add(gizmoGroup);
+}
+
+function handleGizmoDrag(e) {
+  const p = getPlate(selectedId);
+  if (!p) return;
+  const dx = e.clientX - gizmoDragStart.x;
+  const dy = e.clientY - gizmoDragStart.y;
+
+  // Project screen delta onto world axis
+  const axisVec = { x: new THREE.Vector3(1,0,0), y: new THREE.Vector3(0,1,0), z: new THREE.Vector3(0,0,1) }[gizmoAxis];
+  const origin = new THREE.Vector3(p.x, p.y + p.thickness/2, p.z);
+  const tip = origin.clone().addScaledVector(axisVec, 100);
+  const originScreen = worldToScreen(origin);
+  const tipScreen = worldToScreen(tip);
+  const screenDir = new THREE.Vector2(tipScreen.x - originScreen.x, tipScreen.y - originScreen.y).normalize();
+  const mouseDelta = new THREE.Vector2(dx, dy);
+  const proj = mouseDelta.dot(screenDir);
+
+  const speed = orbit.radius * 0.0015;
+  const delta = proj * speed;
+
+  if (gizmoMode === 'move') {
+    if (gizmoAxis === 'x') p.x = gizmoDragStartVal.x + delta;
+    if (gizmoAxis === 'y') p.y = gizmoDragStartVal.y + delta;
+    if (gizmoAxis === 'z') p.z = gizmoDragStartVal.z + delta;
+    if (gridSnapEnabled) {
+      if (gizmoAxis === 'x') p.x = Math.round(p.x / gridSnapSize) * gridSnapSize;
+      if (gizmoAxis === 'z') p.z = Math.round(p.z / gridSnapSize) * gridSnapSize;
+    }
+    if (p.mesh) p.mesh.position.set(p.x, p.y + p.thickness/2, p.z);
+  } else if (gizmoMode === 'rotate') {
+    const deg = proj * 0.5;
+    if (gizmoAxis === 'x') p.rx = gizmoDragStartVal.rx + deg;
+    if (gizmoAxis === 'y') p.ry = gizmoDragStartVal.ry + deg;
+    if (gizmoAxis === 'z') p.rz = gizmoDragStartVal.rz + deg;
+    if (p.mesh) p.mesh.rotation.set(
+      THREE.MathUtils.degToRad(p.rx),
+      THREE.MathUtils.degToRad(p.ry),
+      THREE.MathUtils.degToRad(p.rz)
+    );
+  } else if (gizmoMode === 'scale') {
+    const dd = proj * speed * 2;
+    if (gizmoAxis === 'x') p.width  = Math.max(1, gizmoDragStartVal.w + dd);
+    if (gizmoAxis === 'y') p.thickness = Math.max(1, gizmoDragStartVal.y + dd);
+    if (gizmoAxis === 'z') p.height = Math.max(1, gizmoDragStartVal.h + dd);
+    // Rebuild geometry for scale
+    createPlateMesh(p);
+  }
+
+  updateGizmo();
+  updateVertexMarkers();
+  updatePropsPanel();
+}
+
+function worldToScreen(v) {
+  const area = document.getElementById('canvas-area');
+  const w = area.clientWidth, h = area.clientHeight;
+  const ndc = v.clone().project(camera);
+  return { x: (ndc.x + 1) / 2 * w, y: (1 - ndc.y) / 2 * h };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Vertex Markers (3D spheres on plate corners)
+// ═══════════════════════════════════════════════════════════════
+function removeVertexMarkers() {
+  if (vertexMarkers) { scene.remove(vertexMarkers); vertexMarkers = null; }
+  vertexMarkerMap = {};
+}
+
+function updateVertexMarkers() {
+  removeVertexMarkers();
+  if (!showPoints) return;
+
+  vertexMarkers = new THREE.Group();
+  vertexMarkers.userData.isMarker = true;
+
+  if (snapMode) {
+    // スナップモード: 全板の全カスタム頂点を表示
+    plates.forEach(plate => {
+      if (plate.visible === false || !plate.mesh) return;
+      const isMoving = plate.id === selectedId;
+      const pts = plate.customPoints || [];
+      pts.forEach((pt, i) => {
+        if (pt.type !== 'point') return;
+        const r = isMoving ? 2.5 : 1.8;
+        const col = isMoving ? 0xffdd00 : 0x2dd4bf;
+        const emissive = isMoving ? 0xaa8800 : 0x0a6060;
+        const geo = new THREE.SphereGeometry(r, 10, 10);
+        const mat = new THREE.MeshPhongMaterial({ color: col, emissive, depthTest: false, transparent: true, opacity: 0.95 });
+        const sphere = new THREE.Mesh(geo, mat);
+        
+        // ワールド座標を計算
+        const worldPos = computeVertexWorldPos(plate, pt);
+        sphere.position.copy(worldPos);
+        sphere.renderOrder = 1001;
+        sphere.userData.plateId = plate.id;
+        sphere.userData.ptIdx = i;
+        
+        // マップに記録
+        vertexMarkerMap[`${plate.id}_${i}`] = sphere;
+        
+        vertexMarkers.add(sphere);
+      });
+    });
+  } else {
+    // 通常モード: 選択板のみ
+    if (!selectedId) { scene.add(vertexMarkers); return; }
+    const p = getPlate(selectedId);
+    if (!p || !p.mesh) { scene.add(vertexMarkers); return; }
+
+    const pts = p.customPoints || [];
+    pts.forEach((pt, i) => {
+      if (pt.type !== 'point') return;
+      const isSelected = selectedVertices.includes(i);
+      const r = isSelected ? 2.5 : 1.5;
+      const col = isSelected ? 0xffdd00 : 0xffffff;
+      const geo = new THREE.SphereGeometry(r, 10, 10);
+      const mat = new THREE.MeshPhongMaterial({ color: col, emissive: isSelected ? 0xaa8800 : 0x333333, depthTest: false });
+      const sphere = new THREE.Mesh(geo, mat);
+      
+      // ワールド座標を計算
+      const worldPos = computeVertexWorldPos(p, pt);
+      sphere.position.copy(worldPos);
+      sphere.renderOrder = 1000;
+      
+      // マップに記録
+      vertexMarkerMap[`${p.id}_${i}`] = sphere;
+      
+      vertexMarkers.add(sphere);
+    });
+  }
+
+  scene.add(vertexMarkers);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Display toggles (points / edges)
+// ═══════════════════════════════════════════════════════════════
+function toggleShowPoints() {
+  showPoints = !showPoints;
+  document.getElementById('tool-show-points').classList.toggle('active', showPoints);
+  updateVertexMarkers();
+}
+
+function toggleShowEdges() {
+  showEdges = !showEdges;
+  document.getElementById('tool-show-edges').classList.toggle('active', showEdges);
+  plates.forEach(p => {
+    if (!p.mesh) return;
+    p.mesh.traverse(c => {
+      if (c.userData.isEdgeWireframe) c.visible = showEdges;
+    });
+  });
+}
+
+function getMouseWorldPos(e) {
+  raycaster.setFromCamera(mouse, camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const target = new THREE.Vector3();
+  raycaster.ray.intersectPlane(plane, target);
+  return target;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Camera Views
+// ═══════════════════════════════════════════════════════════════
+const VIEW_PRESETS = {
+  front:  { theta: 0,           phi: Math.PI/2, label: '正面' },
+  back:   { theta: Math.PI,     phi: Math.PI/2, label: '背面' },
+  left:   { theta: -Math.PI/2,  phi: Math.PI/2, label: '左側面' },
+  right:  { theta: Math.PI/2,   phi: Math.PI/2, label: '右側面' },
+  top:    { theta: 0,           phi: 0.1,       label: '上面' },
+  bottom: { theta: 0,           phi: Math.PI-0.1, label: '下面' },
+  persp:  { theta: Math.PI/4,   phi: Math.PI/4, label: 'パース' }
+};
+
+function setCameraView(v) {
+  const preset = VIEW_PRESETS[v];
+  if (!preset) return;
+  orbit.theta = preset.theta;
+  orbit.phi = preset.phi;
+  updateCamera();
+}
+
+function fitAll() {
+  if (plates.length === 0) { orbit.radius = 500; updateCamera(); return; }
+  const box = new THREE.Box3();
+  plates.forEach(p => { if (p.mesh) box.expandByObject(p.mesh); });
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  orbit.target.copy(center);
+  orbit.radius = Math.max(size.x, size.y, size.z) * 2 + 100;
+  updateCamera();
+}
+
+function zoomIn() { orbit.radius = Math.max(10, orbit.radius * 0.8); updateCamera(); }
+function zoomOut() { orbit.radius = Math.min(5000, orbit.radius * 1.25); updateCamera(); }
+function resetCamera() { orbit.target.set(0, 0, 0); orbit.theta = Math.PI/4; orbit.phi = Math.PI/4; orbit.radius = 500; updateCamera(); }
+
+// ═══════════════════════════════════════════════════════════════
+// Keyboard shortcuts
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const p = getPlate(selectedId);
+  const step = e.shiftKey ? 10 : 1;
+  const rotStep = e.shiftKey ? 10 : 1;
+
+  switch (e.key) {
+    case 'Delete': case 'Backspace':
+      if (selectedId && currentTool === 'select') { e.preventDefault(); deleteSelected(); }
+      break;
+    case 'Escape': deselectAll(); break;
+    case 'q': setTool('select'); break;
+    case 'w': setTool('move'); break;
+    case 'e': setTool('rotate'); break;
+    case 'r': setTool('scale'); break;
+    case 'ArrowLeft':
+      if (p) { e.preventDefault();
+        if (currentTool === 'move') { p.x -= step; }
+        else if (currentTool === 'rotate') { p.ry -= rotStep; }
+        else if (currentTool === 'scale') { p.width = Math.max(1, p.width - step); }
+        refreshPlateMesh(p); updatePropsPanel(); } break;
+    case 'ArrowRight':
+      if (p) { e.preventDefault();
+        if (currentTool === 'move') { p.x += step; }
+        else if (currentTool === 'rotate') { p.ry += rotStep; }
+        else if (currentTool === 'scale') { p.width += step; }
+        refreshPlateMesh(p); updatePropsPanel(); } break;
+    case 'ArrowUp':
+      if (p) { e.preventDefault();
+        if (currentTool === 'move') { p.z -= step; }
+        else if (currentTool === 'rotate') { p.rx -= rotStep; }
+        else if (currentTool === 'scale') { p.height += step; }
+        refreshPlateMesh(p); updatePropsPanel(); } break;
+    case 'ArrowDown':
+      if (p) { e.preventDefault();
+        if (currentTool === 'move') { p.z += step; }
+        else if (currentTool === 'rotate') { p.rx += rotStep; }
+        else if (currentTool === 'scale') { p.height = Math.max(1, p.height - step); }
+        refreshPlateMesh(p); updatePropsPanel(); } break;
+    case 'PageUp':
+      if (p && currentTool === 'move') { e.preventDefault(); p.y += step; refreshPlateMesh(p); updatePropsPanel(); } break;
+    case 'PageDown':
+      if (p && currentTool === 'move') { e.preventDefault(); p.y -= step; refreshPlateMesh(p); updatePropsPanel(); } break;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Tab switching
+// ═══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.ptab').forEach((el, i) => {
+    const tabs = ['props', 'vertex', 'snap'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Add Plate Modal
+// ═══════════════════════════════════════════════════════════════
+function openAddPlateModal() {
+  document.getElementById('add-plate-modal').classList.remove('hidden');
+  // Auto-name
+  const names = plates.map(p => p.name);
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let name = '板A';
+  for (let i = 0; i < letters.length; i++) {
+    name = `板${letters[i]}`;
+    if (!names.includes(name)) break;
+  }
+  document.getElementById('modal-name').value = name;
+}
+
+function closeAddPlateModal() {
+  document.getElementById('add-plate-modal').classList.add('hidden');
+}
+
+function selectThickness(t) {
+  selectedThicknessModal = t;
+  document.querySelectorAll('#thickness-grid .th-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.t) === t);
+  });
+}
+
+function confirmAddPlate() {
+  const name = document.getElementById('modal-name').value.trim() || '板';
+  const w = Math.max(1, parseFloat(document.getElementById('modal-w').value) || 100);
+  const h = Math.max(1, parseFloat(document.getElementById('modal-h').value) || 100);
+  const color = document.getElementById('modal-color').value;
+  addPlate({ name, width: w, height: h, thickness: selectedThicknessModal, color });
+  closeAddPlateModal();
+}
+
+// Keyboard enter to confirm modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('add-plate-modal').classList.contains('hidden')) {
+    confirmAddPlate();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Save / Load
+// ═══════════════════════════════════════════════════════════════
+function saveProject() {
+  const data = plates.map(p => ({
+    id: p.id, name: p.name,
+    width: p.width, height: p.height, thickness: p.thickness,
+    x: p.x, y: p.y, z: p.z,
+    rx: p.rx, ry: p.ry, rz: p.rz,
+    color: p.color, visible: p.visible,
+    fullOrder: p.fullOrder,
+    customPoints: p.customPoints,
+    customEdges: p.customEdges,
+    customArcs: p.customArcs
+  }));
+  const json = JSON.stringify({ version: 1, plateCounter, plates: data }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'acrylcad_project.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('プロジェクトを保存しました');
+}
+
+function loadProject() {
+  document.getElementById('load-file-input').click();
+}
+
+function handleLoadFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.plates) throw new Error('Invalid format');
+      // Clear current
+      plates.forEach(p => { if (p.mesh) scene.remove(p.mesh); });
+      plates = [];
+      plateCounter = data.plateCounter || 0;
+      data.plates.forEach(cfg => {
+        plateCounter = Math.max(plateCounter, cfg.id);
+        const plate = Object.assign({}, cfg, { mesh: null });
+        plates.push(plate);
+        createPlateMesh(plate);
+      });
+      refreshObjectList();
+      updatePlateCount();
+      showToast('プロジェクトを読み込みました');
+    } catch (err) {
+      alert('読み込みエラー: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Blueprint Export — 入稿用高品質フォーマット
+// ═══════════════════════════════════════════════════════════════
+// A4縦 297×210mm を 3.78px/mm(96dpi) 相当でレンダリング
+// カットライン: 赤 RGB(255,0,0)、業界標準
+const BP_PX_PER_MM = 3.78; // px/mm at 96dpi — ×4 for high-res
+const BP_SCALE_HI  = 4;    // 4× super-sampling → 高解像度PNG
+
+function exportBlueprints() {
+  if (plates.length === 0) { showToast('板がありません'); return; }
+  document.getElementById('blueprint-modal').classList.remove('hidden');
+  const btns = document.getElementById('bp-plate-btns');
+  btns.innerHTML = '';
+  plates.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'hbtn' + (p.id === (currentBpPlateId || plates[0].id) ? ' primary' : '');
+    b.style.cssText = 'width:100%;text-align:left;font-size:12px;padding:5px 8px';
+    b.textContent = p.name;
+    b.onclick = () => {
+      currentBpPlateId = p.id;
+      document.querySelectorAll('#bp-plate-btns .hbtn').forEach(x => x.classList.remove('primary'));
+      b.classList.add('primary');
+      drawBlueprint(p.id);
+    };
+    btns.appendChild(b);
+  });
+  currentBpPlateId = currentBpPlateId || plates[0].id;
+  drawBlueprint(currentBpPlateId);
+}
+
+// ── 図面データ計算 ──────────────────────────────────────────────
+function getBlueprintPoints(plate) {
+  if (plate.fullOrder && plate.customPoints && plate.customPoints.length >= 3) {
+    return plate.customPoints.filter(p => p.type === 'point');
+  }
+  return [
+    { x: 0, y: 0 }, { x: plate.width, y: 0 },
+    { x: plate.width, y: plate.height }, { x: 0, y: plate.height }
+  ];
+}
+
+function getBlueprintEdges(plate) {
+  return plate.customEdges || [];
+}
+
+function getBlueprintArcs(plate) {
+  if (!plate.customPoints) return [];
+  return plate.customPoints.filter(p => p.type === 'arc');
+}
+
+// ── メイン描画関数 ────────────────────────────────────────────
+function drawBlueprint(id) {
+  const p = getPlate(id);
+  if (!p) return;
+
+  const scaleOpt = document.getElementById('bp-scale-select').value;
+  const pts = getBlueprintPoints(p);
+  const ptW = p.width, ptH = p.height, thick = p.thickness;
+
+  // 自動スケール: A4縦の描画エリア (180×257mm) に収まるよう計算
+  let mmPerPx;
+  if (scaleOpt === 'auto') {
+    const fitScaleX = 180 / ptW;
+    const fitScaleY = 220 / ptH;
+    mmPerPx = 1 / (Math.min(fitScaleX, fitScaleY) * BP_PX_PER_MM);
+  } else {
+    mmPerPx = 1 / (parseFloat(scaleOpt) * BP_PX_PER_MM);
+  }
+
+  // Canvas: 描画エリア + 余白 (mm→px)
+  const PAD_MM = 24; // 余白 mm
+  const DIM_MM = 12; // 寸法線領域 mm
+  const TITLE_MM = 36; // タイトルブロック mm
+  const FOOTER_MM = 18;
+  const canvWmm = ptW + PAD_MM * 2 + DIM_MM;
+  const canvHmm = ptH + PAD_MM * 2 + DIM_MM + TITLE_MM + FOOTER_MM;
+
+  const PX = mm => mm * BP_PX_PER_MM * BP_SCALE_HI;
+  const cW = Math.round(PX(canvWmm));
+  const cH = Math.round(PX(canvHmm));
+
+  const canvas = document.getElementById('bp-canvas');
+  canvas.width  = cW;
+  canvas.height = cH;
+  // CSS表示サイズ: 最大800px幅
+  const cssW = Math.min(800, cW / BP_SCALE_HI);
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = (cH / BP_SCALE_HI * cssW / (cW / BP_SCALE_HI)) + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, cW, cH);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, cW, cH);
+
+  const S = BP_PX_PER_MM * BP_SCALE_HI; // px per mm
+  // Origin of drawing area (mm from top-left)
+  const OX = PAD_MM + DIM_MM / 2;
+  const OY = TITLE_MM + PAD_MM;
+
+  function toC(x, y) { return [PX(OX) + x * S, PX(OY) + y * S]; }
+
+  // ── 外枠 ─────────────────────────────────────────────────────
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5 * BP_SCALE_HI;
+  ctx.strokeRect(PX(4), PX(4), cW - PX(8), cH - PX(8));
+
+  // ── タイトルブロック ─────────────────────────────────────────
+  const tbY = PX(4);
+  const tbH = PX(TITLE_MM - 2);
+  ctx.fillStyle = '#f8f9fc';
+  ctx.fillRect(PX(4), tbY, cW - PX(8), tbH);
+  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.5 * BP_SCALE_HI;
+  ctx.strokeRect(PX(4), tbY, cW - PX(8), tbH);
+
+  // タイトルテキスト
+  ctx.fillStyle = '#111';
+  ctx.font = `bold ${10 * BP_SCALE_HI}px "Segoe UI", "Helvetica Neue", sans-serif`;
+  ctx.fillText('ACRYLIC PLATE DRAWING', PX(8), PX(10));
+  ctx.font = `bold ${7 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+  ctx.fillStyle = '#333';
+  ctx.fillText(`部品名: ${p.name}`, PX(8), PX(17));
+
+  // 寸法情報テーブル
+  const infos = [
+    ['幅 (W)', `${ptW} mm`],
+    ['高さ (H)', `${ptH} mm`],
+    ['厚さ (T)', `${thick} mm`],
+    ['材質', 'アクリル板'],
+    ['数量', '1'],
+  ];
+  const colW = (canvWmm - 16) / infos.length;
+  ctx.font = `${5 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+  infos.forEach(([k, v], i) => {
+    const cx = PX(8 + colW * i);
+    const cy = PX(22);
+    ctx.fillStyle = '#666'; ctx.fillText(k, cx, cy);
+    ctx.fillStyle = '#000';
+    ctx.font = `bold ${6 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+    ctx.fillText(v, cx, cy + 6 * BP_SCALE_HI);
+    ctx.font = `${5 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+    // 縦区切り
+    if (i > 0) {
+      ctx.strokeStyle = '#ddd'; ctx.lineWidth = 0.5 * BP_SCALE_HI;
+      ctx.beginPath(); ctx.moveTo(cx - PX(1), PX(20)); ctx.lineTo(cx - PX(1), PX(TITLE_MM - 4)); ctx.stroke();
+    }
+  });
+
+  // スケール表示
+  const scaleStr = scaleOpt === 'auto' ? `1:${(1 / Math.min(180/ptW, 220/ptH)).toFixed(1)}` : `1:${1/parseFloat(scaleOpt)}`;
+  ctx.fillStyle = '#555'; ctx.font = `${5 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+  ctx.textAlign = 'right';
+  ctx.fillText(`縮尺 ${scaleStr}`, cW - PX(8), PX(TITLE_MM - 8));
+  const now = new Date();
+  ctx.fillText(now.toLocaleDateString('ja-JP'), cW - PX(8), PX(TITLE_MM - 3));
+  ctx.textAlign = 'left';
+
+  // 仕切り線
+  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.5 * BP_SCALE_HI;
+  ctx.beginPath(); ctx.moveTo(PX(4), PX(TITLE_MM - 2)); ctx.lineTo(cW - PX(4), PX(TITLE_MM - 2)); ctx.stroke();
+
+  // ── グリッド ─────────────────────────────────────────────────
+  if (document.getElementById('bp-show-grid').checked) {
+    const gs = ptW <= 100 ? 5 : ptW <= 500 ? 10 : 20;
+    ctx.strokeStyle = '#e8eaf0'; ctx.lineWidth = 0.3 * BP_SCALE_HI;
+    ctx.setLineDash([2 * BP_SCALE_HI, 4 * BP_SCALE_HI]);
+    for (let x = 0; x <= ptW; x += gs) {
+      const [cx] = toC(x, 0); const [, cy0] = toC(0, 0); const [, cy1] = toC(0, ptH);
+      ctx.beginPath(); ctx.moveTo(cx, cy0); ctx.lineTo(cx, cy1); ctx.stroke();
+    }
+    for (let y = 0; y <= ptH; y += gs) {
+      const [cx0] = toC(0, y); const [cx1] = toC(ptW, y); const [, cy] = toC(0, y);
+      ctx.beginPath(); ctx.moveTo(cx0, cy); ctx.lineTo(cx1, cy); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // ── カットライン（赤・入稿規格） ─────────────────────────────
+  ctx.strokeStyle = 'rgb(255,0,0)';
+  ctx.lineWidth = 1.2 * BP_SCALE_HI;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+  const edges = getBlueprintEdges(p);
+  if (edges.length > 0) {
+    for (const [a, b] of edges) {
+      if (!pts[a] || !pts[b]) continue;
+      const [ax, ay] = toC(pts[a].x, pts[a].y);
+      const [bx, by] = toC(pts[b].x, pts[b].y);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    }
+  } else {
+    ctx.beginPath();
+    pts.forEach((pt, i) => {
+      const [cx, cy] = toC(pt.x, pt.y);
+      i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+    });
+    ctx.closePath(); ctx.stroke();
+  }
+
+  // 弧
+  for (const arc of getBlueprintArcs(p)) {
+    const [cx, cy] = toC(arc.cx, arc.cy);
+    ctx.beginPath();
+    ctx.arc(cx, cy, arc.r * S,
+      arc.startAngle * Math.PI / 180,
+      arc.endAngle * Math.PI / 180, false);
+    ctx.stroke();
+  }
+
+  // ── 板の塗り（薄い青） ────────────────────────────────────────
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = '#3366cc';
+  ctx.beginPath();
+  pts.forEach((pt, i) => {
+    const [cx, cy] = toC(pt.x, pt.y);
+    i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+  });
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // ── 頂点マーカー ───────────────────────────────────────────
+  if (document.getElementById('bp-show-pts').checked) {
+    ctx.font = `${4.5 * BP_SCALE_HI}px "Courier New", monospace`;
+    pts.forEach((pt, i) => {
+      const [cx, cy] = toC(pt.x, pt.y);
+      ctx.fillStyle = '#c00';
+      ctx.beginPath(); ctx.arc(cx, cy, 2.5 * BP_SCALE_HI, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.fillText(`P${i}(${pt.x},${pt.y})`, cx + 3 * BP_SCALE_HI, cy - 3 * BP_SCALE_HI);
+    });
+  }
+
+  // ── 寸法線 ────────────────────────────────────────────────────
+  if (document.getElementById('bp-show-dims').checked) {
+    ctx.strokeStyle = '#444'; ctx.fillStyle = '#222';
+    ctx.lineWidth = 0.8 * BP_SCALE_HI;
+    ctx.font = `${5 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+
+    // 横寸法（幅）
+    const [x0c, y0c] = toC(0, ptH); const [x1c] = toC(ptW, ptH);
+    const dimYc = y0c + 8 * S;
+    drawBpDimH(ctx, x0c, x1c, dimYc, `${ptW} mm`, S);
+
+    // 縦寸法（高さ）
+    const [xrc] = toC(ptW, 0); const [, yr0c] = toC(ptW, 0); const [, yr1c] = toC(ptW, ptH);
+    const dimXc = xrc + 8 * S;
+    drawBpDimV(ctx, dimXc, yr0c, yr1c, `${ptH} mm`, S);
+
+    // 各辺の長さ（辺がある場合）
+    if (edges.length > 0) {
+      ctx.font = `${3.8 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+      ctx.fillStyle = '#555';
+      for (const [a, b] of edges) {
+        if (!pts[a] || !pts[b]) continue;
+        const len = Math.hypot(pts[b].x - pts[a].x, pts[b].y - pts[a].y);
+        const [ax2, ay2] = toC(pts[a].x, pts[a].y);
+        const [bx2, by2] = toC(pts[b].x, pts[b].y);
+        const mx = (ax2 + bx2) / 2, my = (ay2 + by2) / 2;
+        const normAng = Math.atan2(by2 - ay2, bx2 - ax2);
+        const perpX = -Math.sin(normAng) * 6 * BP_SCALE_HI;
+        const perpY = Math.cos(normAng) * 6 * BP_SCALE_HI;
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        const lbl = `${len.toFixed(1)}`;
+        const tw = ctx.measureText(lbl).width + 4 * BP_SCALE_HI;
+        ctx.fillRect(mx + perpX - tw/2, my + perpY - 4 * BP_SCALE_HI, tw, 8 * BP_SCALE_HI);
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText(lbl, mx + perpX, my + perpY + 3 * BP_SCALE_HI);
+        ctx.textAlign = 'left';
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── フッター ─────────────────────────────────────────────────
+  const fyPx = cH - PX(FOOTER_MM - 2);
+  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.5 * BP_SCALE_HI;
+  ctx.beginPath(); ctx.moveTo(PX(4), fyPx); ctx.lineTo(cW - PX(4), fyPx); ctx.stroke();
+  ctx.fillStyle = '#888'; ctx.font = `${4.5 * BP_SCALE_HI}px "Segoe UI", sans-serif`;
+  ctx.fillText('AcrylCAD — アクリル板設計ツール', PX(8), fyPx + 5 * BP_SCALE_HI);
+  ctx.fillStyle = '#c00';
+  ctx.fillText('カットライン: RGB(255,0,0) 線幅 0.01pt ／ 原寸データ', PX(8), fyPx + 11 * BP_SCALE_HI);
+
+  // 情報テキスト更新
+  const bpInfo = document.getElementById('bp-info-text');
+  if (bpInfo) bpInfo.textContent = `${ptW}×${ptH}mm  厚さ${thick}mm  頂点${pts.length}点`;
+}
+
+function drawBpDimH(ctx, x0, x1, y, label, S) {
+  const tk = 5 * S;
+  ctx.beginPath();
+  ctx.moveTo(x0, y - tk); ctx.lineTo(x0, y + tk);
+  ctx.moveTo(x1, y - tk); ctx.lineTo(x1, y + tk);
+  ctx.moveTo(x0, y); ctx.lineTo(x1, y);
+  // arrows
+  ctx.moveTo(x0 + 6*S, y - 3*S); ctx.lineTo(x0, y); ctx.lineTo(x0 + 6*S, y + 3*S);
+  ctx.moveTo(x1 - 6*S, y - 3*S); ctx.lineTo(x1, y); ctx.lineTo(x1 - 6*S, y + 3*S);
+  ctx.stroke();
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.fillStyle = '#222';
+  const bg = ctx.measureText(label).width + 6 * S;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect((x0+x1)/2 - bg/2, y - 5*S, bg, 10*S);
+  ctx.fillStyle = '#222';
+  ctx.fillText(label, (x0+x1)/2, y + 3.5*S);
+  ctx.restore();
+}
+
+function drawBpDimV(ctx, x, y0, y1, label, S) {
+  const tk = 5 * S;
+  ctx.beginPath();
+  ctx.moveTo(x - tk, y0); ctx.lineTo(x + tk, y0);
+  ctx.moveTo(x - tk, y1); ctx.lineTo(x + tk, y1);
+  ctx.moveTo(x, y0); ctx.lineTo(x, y1);
+  ctx.moveTo(x - 3*S, y0 + 6*S); ctx.lineTo(x, y0); ctx.lineTo(x + 3*S, y0 + 6*S);
+  ctx.moveTo(x - 3*S, y1 - 6*S); ctx.lineTo(x, y1); ctx.lineTo(x + 3*S, y1 - 6*S);
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(x + 9 * S, (y0 + y1) / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#222';
+  const bg = ctx.measureText(label).width + 6 * S;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(-bg/2, -5*S, bg, 10*S);
+  ctx.fillStyle = '#222';
+  ctx.fillText(label, 0, 3.5*S);
+  ctx.restore();
+}
+
+function downloadBlueprintPNG() {
+  const canvas = document.getElementById('bp-canvas');
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  const p = getPlate(currentBpPlateId);
+  a.download = `${p ? p.name : 'blueprint'}_drawing.png`;
+  a.click();
+  showToast('高解像度PNGを保存しました');
+}
+
+function downloadBlueprintSVG() {
+  const p = getPlate(currentBpPlateId);
+  if (!p) return;
+  const pts = getBlueprintPoints(p);
+  const edges = getBlueprintEdges(p);
+  const arcs = getBlueprintArcs(p);
+  const W = p.width, H = p.height, T = p.thickness;
+  const PAD = 20;
+  const TITLE = 32;
+  const DIM = 15;
+  const FOOTER = 12;
+  const svgW = W + PAD * 2 + DIM;
+  const svgH = H + PAD * 2 + DIM + TITLE + FOOTER;
+  const ox = PAD + DIM / 2, oy = TITLE + PAD;
+
+  let svgEdges = '';
+  if (edges.length > 0) {
+    for (const [a, b] of edges) {
+      if (!pts[a] || !pts[b]) continue;
+      svgEdges += `<line x1="${ox + pts[a].x}" y1="${oy + pts[a].y}" x2="${ox + pts[b].x}" y2="${oy + pts[b].y}" stroke="red" stroke-width="0.01"/>`;
+    }
+  } else {
+    const d = pts.map((pt, i) => `${i === 0 ? 'M' : 'L'}${ox + pt.x},${oy + pt.y}`).join(' ') + ' Z';
+    svgEdges = `<path d="${d}" fill="none" stroke="red" stroke-width="0.01"/>`;
+  }
+  for (const arc of arcs) {
+    svgEdges += `<path d="${describeArc(ox + arc.cx, oy + arc.cy, arc.r, arc.startAngle, arc.endAngle)}" fill="none" stroke="red" stroke-width="0.01"/>`;
+  }
+
+  // 塗り
+  const fillD = pts.map((pt, i) => `${i === 0 ? 'M' : 'L'}${ox + pt.x},${oy + pt.y}`).join(' ') + ' Z';
+
+  const now = new Date().toLocaleDateString('ja-JP');
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}mm" height="${svgH}mm">
+  <!-- AcrylCAD Blueprint / ${p.name} / ${now} -->
+  <!-- カットライン: RGB(255,0,0) 線幅 0.01pt - はざいや/レーザーカット業者入稿対応 -->
+  <rect x="0" y="0" width="${svgW}" height="${svgH}" fill="white"/>
+  <rect x="1" y="1" width="${svgW-2}" height="${svgH-2}" fill="none" stroke="#000" stroke-width="0.5"/>
+
+  <!-- タイトルブロック -->
+  <rect x="1" y="1" width="${svgW-2}" height="${TITLE-2}" fill="#f8f9fc" stroke="#bbb" stroke-width="0.3"/>
+  <text x="4" y="9" font-family="Helvetica,Arial,sans-serif" font-size="6" font-weight="bold" fill="#111">ACRYLIC PLATE DRAWING</text>
+  <text x="4" y="15" font-family="Helvetica,Arial,sans-serif" font-size="4.5" font-weight="bold" fill="#333">部品名: ${p.name}</text>
+  <text x="4" y="21" font-family="Helvetica,Arial,sans-serif" font-size="3.5" fill="#666">幅: ${W}mm  高さ: ${H}mm  厚さ: ${T}mm  材質: アクリル板  数量: 1</text>
+  <text x="${svgW - 4}" y="27" font-family="Helvetica,Arial,sans-serif" font-size="3" fill="#555" text-anchor="end">1:1 原寸  ${now}</text>
+  <line x1="1" y1="${TITLE-2}" x2="${svgW-1}" y2="${TITLE-2}" stroke="#bbb" stroke-width="0.3"/>
+
+  <!-- 板の塗り（薄い青）-->
+  <path d="${fillD}" fill="rgba(51,102,204,0.06)" stroke="none"/>
+
+  <!-- カットライン (赤・入稿規格) -->
+  ${svgEdges}
+
+  <!-- 頂点マーカー -->
+  ${pts.map((pt, i) => `<circle cx="${ox+pt.x}" cy="${oy+pt.y}" r="0.8" fill="red"/><text x="${ox+pt.x+1}" y="${oy+pt.y-1}" font-family="Courier,monospace" font-size="2.5" fill="#222">P${i}(${pt.x},${pt.y})</text>`).join('\n  ')}
+
+  <!-- 寸法線 -->
+  <line x1="${ox}" y1="${oy+H+10}" x2="${ox+W}" y2="${oy+H+10}" stroke="#444" stroke-width="0.4"/>
+  <line x1="${ox}" y1="${oy+H+7}" x2="${ox}" y2="${oy+H+13}" stroke="#444" stroke-width="0.4"/>
+  <line x1="${ox+W}" y1="${oy+H+7}" x2="${ox+W}" y2="${oy+H+13}" stroke="#444" stroke-width="0.4"/>
+  <text x="${ox+W/2}" y="${oy+H+15}" font-family="Helvetica,sans-serif" font-size="3.5" fill="#222" text-anchor="middle">${W} mm</text>
+  <line x1="${ox+W+10}" y1="${oy}" x2="${ox+W+10}" y2="${oy+H}" stroke="#444" stroke-width="0.4"/>
+  <line x1="${ox+W+7}" y1="${oy}" x2="${ox+W+13}" y2="${oy}" stroke="#444" stroke-width="0.4"/>
+  <line x1="${ox+W+7}" y1="${oy+H}" x2="${ox+W+13}" y2="${oy+H}" stroke="#444" stroke-width="0.4"/>
+  <text transform="translate(${ox+W+18},${oy+H/2}) rotate(90)" font-family="Helvetica,sans-serif" font-size="3.5" fill="#222" text-anchor="middle">${H} mm</text>
+
+  <!-- フッター -->
+  <line x1="1" y1="${svgH-FOOTER}" x2="${svgW-1}" y2="${svgH-FOOTER}" stroke="#bbb" stroke-width="0.3"/>
+  <text x="4" y="${svgH-6}" font-family="Helvetica,sans-serif" font-size="3" fill="#888">AcrylCAD — アクリル板設計ツール</text>
+  <text x="4" y="${svgH-2}" font-family="Helvetica,sans-serif" font-size="2.8" fill="red">カットライン: RGB(255,0,0) 0.01pt / 原寸データ</text>
+</svg>`;
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${p.name}_cutline.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('SVGを保存しました（入稿推奨）');
+}
+
+function describeArc(cx, cy, r, startDeg, endDeg) {
+  const toRad = d => d * Math.PI / 180;
+  const x1 = cx + r * Math.cos(toRad(startDeg));
+  const y1 = cy + r * Math.sin(toRad(startDeg));
+  const x2 = cx + r * Math.cos(toRad(endDeg));
+  const y2 = cy + r * Math.sin(toRad(endDeg));
+  const large = (endDeg - startDeg) > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Toast
+// ═══════════════════════════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Draft Editor (2D Blueprint Editor)
+// ═══════════════════════════════════════════════════════════════
+let draftEditingPlateId = null;
+let draftPoints = [];
+let draftEdges = [];
+let draftHistory = [];
+let draftTool = 'select';
+let draftSelectedIdx = null;
+let draftEdgeStart = null;
+let draftCanvas = null, draftCtx = null;
+let draftW = 200, draftH = 150;
+let draftScale = 1, draftOffX = 0, draftOffY = 0;
+let draftMouseDown = false;
+let draftPanStart = null;
+let draftView = 'front';
+let draftViewW = 200, draftViewH = 150;
+
+function openDraftEditor(plateId) {
+  draftEditingPlateId = plateId;
+  const modal = document.getElementById('draft-editor-modal');
+  modal.classList.remove('hidden');
+  draftCanvas = document.getElementById('draft-canvas');
+  draftCtx = draftCanvas.getContext('2d');
+
+  if (plateId !== null) {
+    // Edit existing
+    const p = getPlate(plateId);
+    if (!p) return;
+    document.getElementById('draft-name').value = p.name;
+    document.getElementById('draft-width').value = p.width;
+    document.getElementById('draft-height').value = p.height;
+    document.getElementById('draft-thickness').value = p.thickness;
+    document.getElementById('draft-color').value = p.color;
+    draftW = p.width; draftH = p.height;
+    draftPoints = JSON.parse(JSON.stringify(p.customPoints || []));
+    draftEdges = JSON.parse(JSON.stringify(p.customEdges || []));
+    document.getElementById('draft-plate-name').textContent = `編集中: ${p.name}`;
+  } else {
+    // New plate
+    draftW = parseFloat(document.getElementById('modal-w').value) || 200;
+    draftH = parseFloat(document.getElementById('modal-h').value) || 150;
+    document.getElementById('draft-width').value = draftW;
+    document.getElementById('draft-height').value = draftH;
+    document.getElementById('draft-plate-name').textContent = '新規板';
+    draftPoints = [
+      {type:'point',x:0,y:0},{type:'point',x:draftW,y:0},
+      {type:'point',x:draftW,y:draftH},{type:'point',x:0,y:draftH}
+    ];
+    draftEdges = [];
+  }
+  draftHistory = [];
+  draftSelectedIdx = null;
+  draftEdgeStart = null;
+  draftView = 'front';
+  draftViewW = draftW; draftViewH = draftH;
+  setDraftTool('select');
+  document.querySelectorAll('.draft-view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === 'front');
+  });
+  const lbl = document.getElementById('draft-view-label');
+  if (lbl) lbl.textContent = DRAFT_VIEW_LABELS['front'];
+  draftFitView();
+  draftResizeCanvas();
+  window.addEventListener('resize', draftResizeCanvas);
+  draftCanvas.addEventListener('mousedown', draftOnMouseDown);
+  draftCanvas.addEventListener('mousemove', draftOnMouseMove);
+  draftCanvas.addEventListener('mouseup', draftOnMouseUp);
+  draftCanvas.addEventListener('wheel', draftOnWheel, {passive:false});
+  draftCanvas.addEventListener('contextmenu', e => e.preventDefault());
+  draftRedraw();
+  draftUpdatePointList();
+}
+
+function closeDraftEditor() {
+  document.getElementById('draft-editor-modal').classList.add('hidden');
+  draftCanvas.removeEventListener('mousedown', draftOnMouseDown);
+  draftCanvas.removeEventListener('mousemove', draftOnMouseMove);
+  draftCanvas.removeEventListener('mouseup', draftOnMouseUp);
+  draftCanvas.removeEventListener('wheel', draftOnWheel);
+  window.removeEventListener('resize', draftResizeCanvas);
+}
+
+function draftResizeCanvas() {
+  const container = draftCanvas.parentElement;
+  draftCanvas.width = container.clientWidth;
+  draftCanvas.height = container.clientHeight;
+  draftRedraw();
+}
+
+function draftFitView() {
+  const cw = (draftCanvas ? draftCanvas.width : 600) || 600;
+  const ch = (draftCanvas ? draftCanvas.height : 450) || 450;
+  const margin = 60;
+  const vw = draftViewW || draftW, vh = draftViewH || draftH;
+  draftScale = Math.min((cw - margin*2) / vw, (ch - margin*2) / vh);
+  draftOffX = (cw - vw * draftScale) / 2;
+  draftOffY = (ch - vh * draftScale) / 2;
+}
+
+function draftResizeBoard() {
+  const newW = Math.max(1, parseFloat(document.getElementById('draft-width').value) || 200);
+  const newH = Math.max(1, parseFloat(document.getElementById('draft-height').value) || 150);
+  const corners = [
+    [0,0],[draftW,0],[draftW,draftH],[0,draftH]
+  ];
+  const newCorners = [
+    [0,0],[newW,0],[newW,newH],[0,newH]
+  ];
+  draftPoints.forEach(p => {
+    if (p.type !== 'point') return;
+    for (let c = 0; c < corners.length; c++) {
+      if (Math.abs(p.x - corners[c][0]) < 0.01 && Math.abs(p.y - corners[c][1]) < 0.01) {
+        p.x = newCorners[c][0]; p.y = newCorners[c][1]; break;
+      }
+    }
+    if (Math.abs(p.x - draftW) < 0.01) p.x = newW;
+    if (Math.abs(p.y - draftH) < 0.01) p.y = newH;
+  });
+  draftW = newW; draftH = newH;
+  draftFitView();
+  draftRedraw();
+  draftUpdatePointList();
+}
+
+function draftMmToCanvas(x, y) {
+  return [draftOffX + x * draftScale, draftOffY + y * draftScale];
+}
+function draftCanvasToMm(cx, cy) {
+  return [(cx - draftOffX) / draftScale, (cy - draftOffY) / draftScale];
+}
+
+function draftSnapToGrid(x, y) {
+  const snap = document.getElementById('draft-snap-grid').checked;
+  const gs = parseFloat(document.getElementById('draft-grid-size').value) || 10;
+  if (!snap) return [x, y];
+  return [Math.round(x / gs) * gs, Math.round(y / gs) * gs];
+}
+
+function draftGetPointsOnly() {
+  return draftPoints.filter(p => p.type === 'point');
+}
+
+const DRAFT_VIEW_LABELS = {
+  front: '正面ビュー  (XY — 幅 × 高さ)',
+  side:  '右側面ビュー  (TY — 厚さ × 高さ)',
+  top:   '上面ビュー  (XT — 幅 × 厚さ)',
+};
+
+function draftRedraw() {
+  if (!draftCtx || !draftCanvas) return;
+  const ctx = draftCtx;
+  const W = draftCanvas.width, H = draftCanvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, W, H);
+
+  // Side/Top view is read-only reference
+  if (draftView === 'side' || draftView === 'top') {
+    _draftDrawSideView(ctx, W, H);
+    return;
+  }
+
+  const gs = parseFloat(document.getElementById('draft-grid-size').value) || 10;
+  // Grid
+  ctx.strokeStyle = 'rgba(42,48,80,0.8)'; ctx.lineWidth = 0.5;
+  for (let x = 0; x <= draftW; x += gs) {
+    const [cx, cy0] = draftMmToCanvas(x, 0); const [, cy1] = draftMmToCanvas(x, draftH);
+    ctx.beginPath(); ctx.moveTo(cx, cy0); ctx.lineTo(cx, cy1); ctx.stroke();
+  }
+  for (let y = 0; y <= draftH; y += gs) {
+    const [cx0, cy] = draftMmToCanvas(0, y); const [cx1] = draftMmToCanvas(draftW, y);
+    ctx.beginPath(); ctx.moveTo(cx0, cy); ctx.lineTo(cx1, cy); ctx.stroke();
+  }
+
+  // Plate boundary
+  ctx.strokeStyle = 'rgba(79,142,247,0.4)'; ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+  const [bx0,by0] = draftMmToCanvas(0,0), [bx1,by1] = draftMmToCanvas(draftW,draftH);
+  ctx.strokeRect(bx0, by0, bx1-bx0, by1-by0);
+  ctx.setLineDash([]);
+
+  const showAngle = document.getElementById('draft-show-angle') && document.getElementById('draft-show-angle').checked;
+  const ptOnly = draftGetPointsOnly();
+
+  // Build per-vertex edge list for angle arcs
+  const vertexEdges = {};
+  for (const [a, b] of draftEdges) {
+    if (!ptOnly[a] || !ptOnly[b]) continue;
+    if (!vertexEdges[a]) vertexEdges[a] = [];
+    if (!vertexEdges[b]) vertexEdges[b] = [];
+    const angAB = Math.atan2(ptOnly[b].y - ptOnly[a].y, ptOnly[b].x - ptOnly[a].x);
+    const angBA = Math.atan2(ptOnly[a].y - ptOnly[b].y, ptOnly[a].x - ptOnly[b].x);
+    vertexEdges[a].push(angAB);
+    vertexEdges[b].push(angBA);
+  }
+
+  for (const [a, b] of draftEdges) {
+    if (!ptOnly[a] || !ptOnly[b]) continue;
+    const pa = ptOnly[a], pb = ptOnly[b];
+    const [ax, ay] = draftMmToCanvas(pa.x, pa.y);
+    const [bx, by] = draftMmToCanvas(pb.x, pb.y);
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    ctx.strokeStyle = '#4f8ef7'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    const len = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    const normAngle = Math.atan2(by - ay, bx - ax);
+    const perpX = -Math.sin(normAngle) * 14, perpY = Math.cos(normAngle) * 14;
+    ctx.save();
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lenLabel = `${len.toFixed(1)}mm`;
+    const tw = ctx.measureText(lenLabel).width + 8;
+    ctx.fillStyle = 'rgba(15,17,23,0.82)';
+    if (ctx.roundRect) ctx.roundRect(mx+perpX-tw/2, my+perpY-7, tw, 14, 3);
+    else ctx.rect(mx+perpX-tw/2, my+perpY-7, tw, 14);
+    ctx.fill();
+    ctx.fillStyle = '#4f8ef7';
+    ctx.fillText(lenLabel, mx+perpX, my+perpY);
+    ctx.restore();
+  }
+
+  // Angle arcs at each vertex
+  if (showAngle) {
+    for (const [vidx, angles] of Object.entries(vertexEdges)) {
+      if (angles.length < 2) continue;
+      const vp = ptOnly[parseInt(vidx)];
+      if (!vp) continue;
+      const [vcx, vcy] = draftMmToCanvas(vp.x, vp.y);
+      const sorted = [...angles].sort((a, b) => a - b);
+      for (let k = 0; k < sorted.length - 1; k++) {
+        const startA = sorted[k], endA = sorted[k+1];
+        const angBetween = (endA - startA) * 180 / Math.PI;
+        if (angBetween < 0.5 || angBetween > 359.5) continue;
+        const arcR = 18;
+        ctx.beginPath();
+        ctx.arc(vcx, vcy, arcR, startA, endA);
+        ctx.strokeStyle = 'rgba(45,212,191,0.7)'; ctx.lineWidth = 1.2; ctx.stroke();
+        const midA = (startA + endA) / 2;
+        const lx = vcx + (arcR + 10) * Math.cos(midA);
+        const ly = vcy + (arcR + 10) * Math.sin(midA);
+        ctx.save();
+        ctx.font = '9px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(15,17,23,0.82)';
+        const atxt = `${angBetween.toFixed(1)}°`;
+        const atw = ctx.measureText(atxt).width + 4;
+        ctx.fillRect(lx - atw/2, ly - 6, atw, 12);
+        ctx.fillStyle = '#2dd4bf';
+        ctx.fillText(atxt, lx, ly);
+        ctx.restore();
+      }
+    }
+  }
+
+  // Arcs
+  for (const p of draftPoints) {
+    if (p.type !== 'arc') continue;
+    const [cx,cy] = draftMmToCanvas(p.cx, p.cy);
+    ctx.beginPath();
+    ctx.arc(cx, cy, p.r * draftScale, p.startAngle * Math.PI/180, p.endAngle * Math.PI/180, false);
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI*2);
+    ctx.fillStyle = '#f59e0b'; ctx.fill();
+    const srad = p.startAngle * Math.PI/180, erad = p.endAngle * Math.PI/180;
+    if (Math.abs(p.endAngle - p.startAngle) < 360) {
+      [[Math.cos(srad), Math.sin(srad)],[Math.cos(erad), Math.sin(erad)]].forEach(([cos,sin]) => {
+        const [epx,epy] = draftMmToCanvas(p.cx + p.r * cos, p.cy + p.r * sin);
+        ctx.beginPath(); ctx.arc(epx, epy, 3.5, 0, Math.PI*2);
+        ctx.fillStyle = '#fbbf24'; ctx.fill();
+      });
+    }
+  }
+
+  // Edge-start highlight
+  if (draftEdgeStart !== null && draftTool === 'edge') {
+    const pts = draftGetPointsOnly();
+    if (pts[draftEdgeStart]) {
+      const [ex,ey] = draftMmToCanvas(pts[draftEdgeStart].x, pts[draftEdgeStart].y);
+      ctx.beginPath(); ctx.arc(ex, ey, 8, 0, Math.PI*2);
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.stroke();
+    }
+  }
+
+  // Points
+  for (let i = 0; i < draftPoints.length; i++) {
+    const p = draftPoints[i];
+    if (p.type !== 'point') continue;
+    const [cx,cy] = draftMmToCanvas(p.x, p.y);
+    const isSel = i === draftSelectedIdx;
+    const isEdgeStart = draftTool === 'edge' && draftGetPointsOnly().indexOf(p) === draftEdgeStart;
+    ctx.beginPath(); ctx.arc(cx, cy, isSel ? 6 : 4, 0, Math.PI*2);
+    ctx.fillStyle = isSel ? '#ffdd00' : (isEdgeStart ? '#f59e0b' : '#fff');
+    ctx.fill();
+    ctx.strokeStyle = isSel ? '#aa8800' : '#4f8ef7'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = isSel ? '#ffdd00' : 'rgba(200,210,240,0.85)';
+    ctx.font = '10px monospace';
+    const ptOnlyIdx = draftGetPointsOnly().indexOf(p);
+    ctx.fillText(`P${ptOnlyIdx}(${p.x.toFixed(0)},${p.y.toFixed(0)})`, cx+6, cy-4);
+  }
+
+  // ── Preview: Edge angle add ──
+  const eaPreview = document.getElementById('draft-ea-preview');
+  if (eaPreview && eaPreview.checked) {
+    const ei  = parseInt(document.getElementById('draft-ea-i').value);
+    const ej  = parseInt(document.getElementById('draft-ea-j').value);
+    const eang = parseFloat(document.getElementById('draft-ea-ang').value);
+    const edist = parseFloat(document.getElementById('draft-ea-dist').value);
+    const ePts = draftGetPointsOnly();
+    if (!isNaN(ei) && !isNaN(ej) && ei < ePts.length && ej < ePts.length && !isNaN(eang) && !isNaN(edist)) {
+      const ea = ePts[ei], eb = ePts[ej];
+      const eEdgeAng = Math.atan2(eb.y - ea.y, eb.x - ea.x);
+      const eTotalAng = eEdgeAng + eang * Math.PI / 180;
+      const ePx = eb.x + edist * Math.cos(eTotalAng);
+      const ePy = eb.y + edist * Math.sin(eTotalAng);
+      const [eax, eay] = draftMmToCanvas(ea.x, ea.y);
+      const [ebx, eby] = draftMmToCanvas(eb.x, eb.y);
+      ctx.save();
+      ctx.setLineDash([5,3]);
+      ctx.strokeStyle = 'rgba(251,191,36,0.7)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(eax, eay); ctx.lineTo(ebx, eby); ctx.stroke();
+      const eLenPx = Math.hypot(ePx - eb.x, ePy - eb.y) * draftScale;
+      const eExtFar = edist !== 0 ? 1.3 : 1;
+      const eFarX = eb.x + edist * eExtFar * Math.cos(eTotalAng);
+      const eFarY = eb.y + edist * eExtFar * Math.sin(eTotalAng);
+      const [efx, efy] = draftMmToCanvas(eFarX, eFarY);
+      ctx.strokeStyle = 'rgba(251,191,36,0.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(ebx, eby); ctx.lineTo(efx, efy); ctx.stroke();
+      ctx.setLineDash([]);
+      const [epx2, epy2] = draftMmToCanvas(ePx, ePy);
+      ctx.beginPath(); ctx.arc(epx2, epy2, 6, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(251,191,36,0.25)'; ctx.fill();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 10px monospace';
+      ctx.fillText(`(${ePx.toFixed(1)}, ${ePy.toFixed(1)})`, epx2+8, epy2-6);
+      ctx.restore();
+    }
+  }
+
+  // ── Preview: Intersection add ──
+  const intPreview = document.getElementById('draft-int-preview');
+  if (intPreview && intPreview.checked) {
+    const ii1 = parseInt(document.getElementById('draft-int-i1').value);
+    const ij1 = parseInt(document.getElementById('draft-int-j1').value);
+    const iAngDeg = parseFloat(document.getElementById('draft-int-ang').value);
+    const ii2 = parseInt(document.getElementById('draft-int-i2').value);
+    const ij2 = parseInt(document.getElementById('draft-int-j2').value);
+    const iPts = draftGetPointsOnly();
+    if (![ii1,ij1,ii2,ij2].some(x => isNaN(x) || x >= iPts.length) && !isNaN(iAngDeg)) {
+      const ia = iPts[ii1], ib = iPts[ij1];
+      const ic = iPts[ii2], id_pt = iPts[ij2];
+      const iEdgeAng1 = Math.atan2(ib.y - ia.y, ib.x - ia.x) + iAngDeg * Math.PI / 180;
+      const id1x = Math.cos(iEdgeAng1), id1y = Math.sin(iEdgeAng1);
+      const id2x = id_pt.x - ic.x, id2y = id_pt.y - ic.y;
+      const iDenom = id1x * id2y - id1y * id2x;
+      const [iax, iay] = draftMmToCanvas(ia.x, ia.y);
+      const [ibx, iby] = draftMmToCanvas(ib.x, ib.y);
+      const [icx, icy] = draftMmToCanvas(ic.x, ic.y);
+      const [idx2, idy2] = draftMmToCanvas(id_pt.x, id_pt.y);
+      ctx.save();
+      ctx.setLineDash([5,3]);
+      ctx.strokeStyle = 'rgba(251,191,36,0.7)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(iax, iay); ctx.lineTo(ibx, iby); ctx.stroke();
+      ctx.strokeStyle = 'rgba(45,212,191,0.7)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(icx, icy); ctx.lineTo(idx2, idy2); ctx.stroke();
+      const iExtLen = Math.max(draftW, draftH) * 1.5;
+      const il1fx = ib.x + iExtLen * id1x, il1fy = ib.y + iExtLen * id1y;
+      const il1bx = ib.x - iExtLen * id1x, il1by = ib.y - iExtLen * id1y;
+      const [il1fpx, il1fpy] = draftMmToCanvas(il1fx, il1fy);
+      const [il1bpx, il1bpy] = draftMmToCanvas(il1bx, il1by);
+      ctx.strokeStyle = 'rgba(251,191,36,0.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(il1bpx, il1bpy); ctx.lineTo(il1fpx, il1fpy); ctx.stroke();
+      const id2Len = Math.hypot(id2x, id2y);
+      if (id2Len > 1e-6) {
+        const id2nx = id2x / id2Len, id2ny = id2y / id2Len;
+        const il2fx = ic.x + iExtLen * id2nx, il2fy = ic.y + iExtLen * id2ny;
+        const il2bx = ic.x - iExtLen * id2nx, il2by = ic.y - iExtLen * id2ny;
+        const [il2fpx, il2fpy] = draftMmToCanvas(il2fx, il2fy);
+        const [il2bpx, il2bpy] = draftMmToCanvas(il2bx, il2by);
+        ctx.strokeStyle = 'rgba(45,212,191,0.35)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(il2bpx, il2bpy); ctx.lineTo(il2fpx, il2fpy); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      if (Math.abs(iDenom) > 1e-10) {
+        const idx_diff = ic.x - ib.x, idy_diff = ic.y - ib.y;
+        const it = (idx_diff * id2y - idy_diff * id2x) / iDenom;
+        const inx = ib.x + it * id1x, iny = ib.y + it * id1y;
+        const [ipx, ipy] = draftMmToCanvas(inx, iny);
+        ctx.beginPath(); ctx.arc(ipx, ipy, 6, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(251,191,36,0.25)'; ctx.fill();
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 10px monospace';
+        ctx.fillText(`(${inx.toFixed(1)}, ${iny.toFixed(1)})`, ipx+8, ipy-6);
+      } else {
+        ctx.fillStyle = '#ef4444'; ctx.font = 'bold 10px monospace';
+        const [midX, midY] = draftMmToCanvas(draftW/2, draftH/2);
+        ctx.fillText('平行 — 交点なし', midX, midY);
+      }
+      ctx.restore();
+    }
+  }
+
+  // Dimension lines
+  ctx.strokeStyle = '#666'; ctx.lineWidth = 0.8; ctx.fillStyle = '#aaa';
+  ctx.font = '10px "Segoe UI"';
+  const [d0x,d0y] = draftMmToCanvas(0, draftH), [d1x] = draftMmToCanvas(draftW, draftH);
+  const dimY = d0y + 18;
+  ctx.beginPath(); ctx.moveTo(d0x, d0y+2); ctx.lineTo(d0x, dimY+3); ctx.moveTo(d1x, d0y+2); ctx.lineTo(d1x, dimY+3); ctx.moveTo(d0x,dimY); ctx.lineTo(d1x,dimY); ctx.stroke();
+  ctx.textAlign='center'; ctx.fillText(`${draftW}mm`, (d0x+d1x)/2, dimY+10); ctx.textAlign='left';
+
+  const [dr0x,dr0y] = draftMmToCanvas(draftW, 0), [,dr1y] = draftMmToCanvas(draftW, draftH);
+  const dimX = dr0x + 18;
+  ctx.beginPath(); ctx.moveTo(dr0x+2, dr0y); ctx.lineTo(dimX+3, dr0y); ctx.moveTo(dr0x+2, dr1y); ctx.lineTo(dimX+3, dr1y); ctx.moveTo(dimX, dr0y); ctx.lineTo(dimX, dr1y); ctx.stroke();
+  ctx.save(); ctx.translate(dimX+10, (dr0y+dr1y)/2); ctx.rotate(Math.PI/2); ctx.textAlign='center'; ctx.fillText(`${draftH}mm`, 0, 0); ctx.restore();
+}
+
+// ── Side/Top view drawing ─────────────────────────────────────
+function _draftDrawSideView(ctx, W, H) {
+  const p = getPlate(draftEditingPlateId);
+  const thick = p ? p.thickness : (parseFloat(document.getElementById('draft-thickness')?.value) || 5);
+  const gs = parseFloat(document.getElementById('draft-grid-size').value) || 10;
+  const isSide = draftView === 'side';
+
+  const vw = isSide ? thick : draftW;
+  const vh = isSide ? draftH : thick;
+
+  ctx.strokeStyle = 'rgba(42,48,80,0.8)'; ctx.lineWidth = 0.5;
+  for (let x = 0; x <= vw; x += gs) {
+    const [cx, cy0] = draftMmToCanvas(x, 0); const [, cy1] = draftMmToCanvas(x, vh);
+    ctx.beginPath(); ctx.moveTo(cx, cy0); ctx.lineTo(cx, cy1); ctx.stroke();
+  }
+  for (let y = 0; y <= vh; y += gs) {
+    const [cx0, cy] = draftMmToCanvas(0, y); const [cx1] = draftMmToCanvas(vw, y);
+    ctx.beginPath(); ctx.moveTo(cx0, cy); ctx.lineTo(cx1, cy); ctx.stroke();
+  }
+
+  const [bx0,by0] = draftMmToCanvas(0,0), [bx1,by1] = draftMmToCanvas(vw,vh);
+  ctx.fillStyle = 'rgba(79,142,247,0.10)';
+  ctx.fillRect(bx0,by0,bx1-bx0,by1-by0);
+  ctx.strokeStyle = 'rgba(79,142,247,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([]);
+  ctx.strokeRect(bx0,by0,bx1-bx0,by1-by0);
+
+  const ptOnly = draftGetPointsOnly();
+  const edges = draftEdges;
+
+  if (isSide) {
+    ctx.strokeStyle = 'rgba(251,191,36,0.6)'; ctx.lineWidth = 1.2; ctx.setLineDash([4,3]);
+    ptOnly.forEach(pt => {
+      const [, cy] = draftMmToCanvas(0, pt.y);
+      ctx.beginPath(); ctx.moveTo(bx0, cy); ctx.lineTo(bx1, cy); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    ctx.font = '9px monospace'; ctx.fillStyle = '#fbbf24'; ctx.textBaseline = 'middle';
+    ptOnly.forEach((pt, i) => {
+      const [, cy] = draftMmToCanvas(0, pt.y);
+      ctx.fillText(`P${i} y=${pt.y.toFixed(1)}mm`, bx1 + 8, cy);
+    });
+
+    if (edges.length > 0) {
+      ctx.strokeStyle = '#2dd4bf'; ctx.lineWidth = 1.5;
+      for (const [a, b] of edges) {
+        if (!ptOnly[a] || !ptOnly[b]) continue;
+        const pa = ptOnly[a], pb = ptOnly[b];
+        const ang = Math.atan2(pb.y - pa.y, pb.x - pa.x) * 180 / Math.PI;
+        const [, ay] = draftMmToCanvas(0, pa.y);
+        const [, by] = draftMmToCanvas(0, pb.y);
+        const midY = (ay + by) / 2;
+        const midX = (bx0 + bx1) / 2;
+        ctx.save();
+        ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(15,17,23,0.82)';
+        const lbl = `${ang.toFixed(1)}°`;
+        const tw = ctx.measureText(lbl).width + 8;
+        ctx.fillRect(midX - tw/2, midY - 7, tw, 14);
+        ctx.fillStyle = '#2dd4bf';
+        ctx.fillText(lbl, midX, midY);
+        ctx.restore();
+      }
+    }
+  } else {
+    ctx.strokeStyle = 'rgba(251,191,36,0.6)'; ctx.lineWidth = 1.2; ctx.setLineDash([4,3]);
+    ptOnly.forEach(pt => {
+      const [cx] = draftMmToCanvas(pt.x, 0);
+      ctx.beginPath(); ctx.moveTo(cx, by0); ctx.lineTo(cx, by1); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    ctx.font = '9px monospace'; ctx.fillStyle = '#fbbf24'; ctx.textBaseline = 'top';
+    ptOnly.forEach((pt, i) => {
+      const [cx] = draftMmToCanvas(pt.x, 0);
+      ctx.save(); ctx.translate(cx, by1 + 8); ctx.rotate(-Math.PI/4);
+      ctx.fillText(`P${i} x=${pt.x.toFixed(1)}`, 0, 0);
+      ctx.restore();
+    });
+  }
+
+  ctx.strokeStyle = '#666'; ctx.lineWidth = 0.8; ctx.fillStyle = '#aaa';
+  ctx.setLineDash([]);
+  ctx.font = '10px "Segoe UI"';
+  const [dx0,dy0] = draftMmToCanvas(0, vh), [dx1] = draftMmToCanvas(vw, vh);
+  const dxOff = dy0 + 18;
+  ctx.beginPath(); ctx.moveTo(dx0,dxOff-5); ctx.lineTo(dx0,dxOff+5); ctx.moveTo(dx1,dxOff-5); ctx.lineTo(dx1,dxOff+5); ctx.moveTo(dx0,dxOff); ctx.lineTo(dx1,dxOff); ctx.stroke();
+  ctx.textAlign='center'; ctx.fillText(`${vw.toFixed(1)}mm`, (dx0+dx1)/2, dxOff+12); ctx.textAlign='left';
+
+  const [dry0x, dry0y] = draftMmToCanvas(vw, 0), [,dry1y] = draftMmToCanvas(vw, vh);
+  const dyOff = dry0x + 18;
+  ctx.beginPath(); ctx.moveTo(dyOff-5,dry0y); ctx.lineTo(dyOff+5,dry0y); ctx.moveTo(dyOff-5,dry1y); ctx.lineTo(dyOff+5,dry1y); ctx.moveTo(dyOff,dry0y); ctx.lineTo(dyOff,dry1y); ctx.stroke();
+  ctx.save(); ctx.translate(dyOff+12,(dry0y+dry1y)/2); ctx.rotate(Math.PI/2); ctx.textAlign='center'; ctx.fillText(`${vh.toFixed(1)}mm`,0,0); ctx.restore();
+
+  // Read-only banner
+  ctx.fillStyle = 'rgba(45,212,191,0.12)';
+  ctx.fillRect(bx0,by0,bx1-bx0,22);
+  ctx.fillStyle = '#2dd4bf'; ctx.font = 'bold 11px "Segoe UI"'; ctx.textBaseline='middle';
+  ctx.fillText(isSide ? '📏 側面断面ビュー — 頂点Y座標の参照・辺角度の確認' : '📏 上面ビュー — 頂点X座標の参照', bx0+8, by0+11);
+  ctx.textBaseline='alphabetic';
+}
+
+function setDraftView(view, skipRedraw = false) {
+  draftView = view;
+  document.querySelectorAll('.draft-view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  const lbl = document.getElementById('draft-view-label');
+  if (lbl) lbl.textContent = DRAFT_VIEW_LABELS[view] || '';
+
+  const p = getPlate(draftEditingPlateId);
+  const thick = p ? p.thickness : (parseFloat(document.getElementById('draft-thickness')?.value) || 5);
+  if (view === 'side') {
+    draftViewW = thick; draftViewH = draftH;
+  } else if (view === 'top') {
+    draftViewW = draftW; draftViewH = thick;
+  } else {
+    draftViewW = draftW; draftViewH = draftH;
+  }
+  draftFitView();
+  if (!skipRedraw) draftRedraw();
+}
+
+function draftOnMouseDown(e) {
+  draftMouseDown = true;
+  const rect = draftCanvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+
+  if (e.button === 1 || (e.button === 0 && e.altKey)) {
+    draftPanStart = {cx, cy, ox: draftOffX, oy: draftOffY}; return;
+  }
+  if (e.button !== 0) return;
+
+  if (draftView !== 'front') return;
+
+  const [mx, my] = draftCanvasToMm(cx, cy);
+  const [sx, sy] = draftSnapToGrid(mx, my);
+
+  if (draftTool === 'point') {
+    draftSaveHistory();
+    draftPoints.push({type:'point', x:parseFloat(sx.toFixed(3)), y:parseFloat(sy.toFixed(3))});
+    draftSelectedIdx = draftPoints.length - 1;
+    draftRedraw(); draftUpdatePointList(); return;
+  }
+
+  if (draftTool === 'select' || draftTool === 'edge') {
+    const pts = draftPoints;
+    let minD = 12 / draftScale, foundIdx = -1;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      if (p.type !== 'point') continue;
+      const d = Math.hypot(p.x - mx, p.y - my);
+      if (d < minD) { minD = d; foundIdx = i; }
+    }
+    if (draftTool === 'select') {
+      draftSelectedIdx = foundIdx >= 0 ? foundIdx : null;
+      draftRedraw(); draftUpdateSelInfo(); return;
+    }
+    if (draftTool === 'edge') {
+      const ptOnly = draftGetPointsOnly();
+      const ptOnlyIdx = foundIdx >= 0 ? ptOnly.indexOf(draftPoints[foundIdx]) : -1;
+      if (ptOnlyIdx < 0) return;
+      if (draftEdgeStart === null) { draftEdgeStart = ptOnlyIdx; draftRedraw(); return; }
+      if (draftEdgeStart !== ptOnlyIdx) {
+        draftSaveHistory();
+        const exists = draftEdges.some(([a,b]) => (a===draftEdgeStart&&b===ptOnlyIdx)||(a===ptOnlyIdx&&b===draftEdgeStart));
+        if (!exists) draftEdges.push([draftEdgeStart, ptOnlyIdx]);
+        draftEdgeStart = null; draftRedraw(); return;
+      }
+      draftEdgeStart = null; draftRedraw(); return;
+    }
+  }
+}
+
+function draftOnMouseMove(e) {
+  const rect = draftCanvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  if (draftPanStart) {
+    draftOffX = draftPanStart.ox + (cx - draftPanStart.cx);
+    draftOffY = draftPanStart.oy + (cy - draftPanStart.cy);
+    draftRedraw(); return;
+  }
+  const [mx, my] = draftCanvasToMm(cx, cy);
+  const [sx, sy] = draftSnapToGrid(mx, my);
+  document.getElementById('draft-coords').textContent = `X: ${sx.toFixed(1)}  Y: ${sy.toFixed(1)}`;
+  if (draftMouseDown && draftTool === 'select' && draftSelectedIdx !== null) {
+    const p = draftPoints[draftSelectedIdx];
+    if (p && p.type === 'point') {
+      p.x = parseFloat(sx.toFixed(3)); p.y = parseFloat(sy.toFixed(3));
+      draftRedraw(); draftUpdatePointList(); draftUpdateSelInfo();
+    }
+  }
+}
+
+function draftOnMouseUp(e) {
+  draftMouseDown = false;
+  draftPanStart = null;
+}
+
+function draftOnWheel(e) {
+  e.preventDefault();
+  const rect = draftCanvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const factor = e.deltaY > 0 ? 0.85 : 1.15;
+  draftOffX = cx - (cx - draftOffX) * factor;
+  draftOffY = cy - (cy - draftOffY) * factor;
+  draftScale *= factor;
+  draftRedraw();
+}
+
+function setDraftTool(t) {
+  draftTool = t;
+  draftEdgeStart = null;
+  document.querySelectorAll('#draft-tool-btns .draft-tool').forEach(b => {
+    b.classList.toggle('active', b.dataset.tool === t);
+  });
+  draftCanvas.style.cursor = t === 'point' ? 'crosshair' : (t === 'edge' ? 'cell' : 'default');
+  draftRedraw();
+}
+
+function draftSaveHistory() {
+  draftHistory.push({points: JSON.parse(JSON.stringify(draftPoints)), edges: JSON.parse(JSON.stringify(draftEdges))});
+  if (draftHistory.length > 50) draftHistory.shift();
+}
+
+function draftUndo() {
+  if (!draftHistory.length) return;
+  const h = draftHistory.pop();
+  draftPoints = h.points; draftEdges = h.edges;
+  draftSelectedIdx = null;
+  draftRedraw(); draftUpdatePointList();
+}
+
+function draftClear() {
+  if (!confirm('全ての点・辺をクリアしますか？')) return;
+  draftSaveHistory();
+  draftPoints = [
+    {type:'point',x:0,y:0},{type:'point',x:draftW,y:0},
+    {type:'point',x:draftW,y:draftH},{type:'point',x:0,y:draftH}
+  ];
+  draftEdges = [];
+  draftSelectedIdx = null;
+  draftRedraw(); draftUpdatePointList();
+}
+
+function draftAddPointAbs() {
+  const x = parseFloat(document.getElementById('draft-pt-x').value) || 0;
+  const y = parseFloat(document.getElementById('draft-pt-y').value) || 0;
+  draftSaveHistory();
+  draftPoints.push({type:'point', x, y});
+  draftSelectedIdx = draftPoints.length - 1;
+  draftRedraw(); draftUpdatePointList();
+  showToast(`点を追加 (${x}, ${y})`);
+}
+
+function draftAddPointEdgeAngle() {
+  const i = parseInt(document.getElementById('draft-ea-i').value);
+  const j = parseInt(document.getElementById('draft-ea-j').value);
+  const ang = parseFloat(document.getElementById('draft-ea-ang').value);
+  const dist = parseFloat(document.getElementById('draft-ea-dist').value);
+  const pts = draftGetPointsOnly();
+  if (isNaN(i) || isNaN(j) || i >= pts.length || j >= pts.length) { showToast('無効なインデックス'); return; }
+  if (isNaN(ang) || isNaN(dist)) { showToast('角度または距離が無効'); return; }
+  const a = pts[i], b = pts[j];
+  const edgeAng = Math.atan2(b.y - a.y, b.x - a.x);
+  const totalAng = edgeAng + ang * Math.PI / 180;
+  const nx = parseFloat((b.x + dist * Math.cos(totalAng)).toFixed(3));
+  const ny = parseFloat((b.y + dist * Math.sin(totalAng)).toFixed(3));
+  draftSaveHistory();
+  draftPoints.push({type:'point', x:nx, y:ny});
+  draftSelectedIdx = draftPoints.length - 1;
+  draftRedraw(); draftUpdatePointList();
+  showToast(`P${j}基点・辺角度で点追加 (${nx}, ${ny})`);
+}
+
+function draftAddIntersectionPoint() {
+  const i1 = parseInt(document.getElementById('draft-int-i1').value);
+  const j1 = parseInt(document.getElementById('draft-int-j1').value);
+  const angDeg = parseFloat(document.getElementById('draft-int-ang').value);
+  const i2 = parseInt(document.getElementById('draft-int-i2').value);
+  const j2 = parseInt(document.getElementById('draft-int-j2').value);
+  const pts = draftGetPointsOnly();
+  if ([i1,j1,i2,j2].some(x => isNaN(x) || x >= pts.length)) { showToast('無効なインデックス'); return; }
+  if (isNaN(angDeg)) { showToast('角度が無効'); return; }
+
+  const a = pts[i1], b = pts[j1];
+  const edgeAng1 = Math.atan2(b.y - a.y, b.x - a.x) + angDeg * Math.PI / 180;
+  const d1x = Math.cos(edgeAng1), d1y = Math.sin(edgeAng1);
+
+  const c = pts[i2], d = pts[j2];
+  const d2x = d.x - c.x, d2y = d.y - c.y;
+  if (Math.hypot(d2x, d2y) < 1e-10) { showToast('Line2の2点が同一'); return; }
+
+  const denom = d1x * d2y - d1y * d2x;
+  if (Math.abs(denom) < 1e-10) { showToast('辺が平行 — 交点なし'); return; }
+  const dx = c.x - b.x, dy = c.y - b.y;
+  const t = (dx * d2y - dy * d2x) / denom;
+
+  const nx = parseFloat((b.x + t * d1x).toFixed(3));
+  const ny = parseFloat((b.y + t * d1y).toFixed(3));
+  draftSaveHistory();
+  draftPoints.push({type:'point', x:nx, y:ny});
+  draftSelectedIdx = draftPoints.length - 1;
+  draftRedraw(); draftUpdatePointList();
+  showToast(`交点を追加 (${nx}, ${ny})`);
+}
+
+function draftAddArc() {
+  if (draftSelectedIdx === null) { showToast('中心となる点を選択してください'); return; }
+  const pt = draftPoints[draftSelectedIdx];
+  if (!pt || pt.type !== 'point') { showToast('点を選択してください'); return; }
+  const r = parseFloat(document.getElementById('draft-arc-r').value) || 20;
+  const s = parseFloat(document.getElementById('draft-arc-s').value) || 0;
+  const en = parseFloat(document.getElementById('draft-arc-e').value) || 90;
+  draftSaveHistory();
+  draftPoints.push({type:'arc', cx:pt.x, cy:pt.y, r, startAngle:s, endAngle:en});
+  if (Math.abs(en - s) < 360) {
+    draftPoints.push({type:'point', x:parseFloat((pt.x + r*Math.cos(s*Math.PI/180)).toFixed(3)), y:parseFloat((pt.y + r*Math.sin(s*Math.PI/180)).toFixed(3))});
+    draftPoints.push({type:'point', x:parseFloat((pt.x + r*Math.cos(en*Math.PI/180)).toFixed(3)), y:parseFloat((pt.y + r*Math.sin(en*Math.PI/180)).toFixed(3))});
+  }
+  draftRedraw(); draftUpdatePointList();
+  showToast('弧を追加しました');
+}
+
+function draftDeleteSelected() {
+  if (draftSelectedIdx === null) return;
+  draftSaveHistory();
+  draftPoints.splice(draftSelectedIdx, 1);
+  const newPtOnlyLen = draftGetPointsOnly().length;
+  draftEdges = draftEdges.filter(([a,b]) => a < newPtOnlyLen && b < newPtOnlyLen);
+  draftSelectedIdx = null;
+  draftRedraw(); draftUpdatePointList(); draftUpdateSelInfo();
+}
+
+function draftUpdateSelInfo() {
+  const titleEl = document.getElementById('draft-sel-title');
+  const infoEl = document.getElementById('draft-sel-info');
+  const delBtn = document.getElementById('draft-del-sel-btn');
+  if (draftSelectedIdx === null) {
+    titleEl.textContent = '選択中: なし';
+    infoEl.innerHTML = '';
+    delBtn.style.display = 'none';
+    return;
+  }
+  const p = draftPoints[draftSelectedIdx];
+  if (!p) return;
+  delBtn.style.display = '';
+  if (p.type === 'point') {
+    const ptIdx = draftGetPointsOnly().indexOf(p);
+    titleEl.textContent = `選択中: P${ptIdx}`;
+    infoEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
+        <span style="width:14px;font-size:10px;color:var(--text3)">X</span>
+        <input type="number" id="draft-sel-x" value="${p.x.toFixed(3)}" step="0.1"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:2px 5px;font-size:11px"
+          oninput="draftApplySelCoords()">
+        <span style="font-size:10px;color:var(--text3)">mm</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="width:14px;font-size:10px;color:var(--text3)">Y</span>
+        <input type="number" id="draft-sel-y" value="${p.y.toFixed(3)}" step="0.1"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:2px 5px;font-size:11px"
+          oninput="draftApplySelCoords()">
+        <span style="font-size:10px;color:var(--text3)">mm</span>
+      </div>`;
+  } else if (p.type === 'arc') {
+    titleEl.textContent = `選択中: 弧`;
+    infoEl.innerHTML = `<span style="font-size:10px;color:var(--text2)">中心(${p.cx.toFixed(1)},${p.cy.toFixed(1)}) r=${p.r} ${p.startAngle}°→${p.endAngle}°</span>`;
+  }
+}
+
+function draftApplySelCoords() {
+  if (draftSelectedIdx === null) return;
+  const p = draftPoints[draftSelectedIdx];
+  if (!p || p.type !== 'point') return;
+  const xEl = document.getElementById('draft-sel-x');
+  const yEl = document.getElementById('draft-sel-y');
+  if (!xEl || !yEl) return;
+  p.x = parseFloat(xEl.value) || 0;
+  p.y = parseFloat(yEl.value) || 0;
+  draftRedraw();
+  draftUpdatePointList();
+}
+
+function draftUpdatePointList() {
+  const list = document.getElementById('draft-point-list');
+  list.innerHTML = '';
+  let ptIdx = 0;
+  draftPoints.forEach((p, i) => {
+    if (p.type !== 'point') return;
+    const div = document.createElement('div');
+    div.style.cssText = 'font-size:10px;padding:2px 4px;border-radius:3px;cursor:pointer;display:flex;gap:4px;align-items:center';
+    div.style.background = i === draftSelectedIdx ? 'rgba(79,142,247,.2)' : 'transparent';
+    div.style.color = i === draftSelectedIdx ? 'var(--accent)' : 'var(--text2)';
+    div.innerHTML = `<span style="width:22px;font-weight:700">P${ptIdx}</span><span>${p.x.toFixed(1)}, ${p.y.toFixed(1)}</span>`;
+    div.onclick = () => { draftSelectedIdx = i; draftRedraw(); draftUpdatePointList(); draftUpdateSelInfo(); };
+    list.appendChild(div);
+    ptIdx++;
+  });
+  draftUpdateSelInfo();
+}
+
+function applyDraftToPlate() {
+  const name = document.getElementById('draft-name').value.trim() || '板';
+  const w = Math.max(1, parseFloat(document.getElementById('draft-width').value) || 200);
+  const h = Math.max(1, parseFloat(document.getElementById('draft-height').value) || 150);
+  const thickness = parseInt(document.getElementById('draft-thickness').value) || 3;
+  const color = document.getElementById('draft-color').value;
+
+  if (draftEditingPlateId !== null) {
+    // Update existing plate
+    const p = getPlate(draftEditingPlateId);
+    if (!p) return;
+    p.name = name; p.width = w; p.height = h; p.thickness = thickness; p.color = color;
+    p.customPoints = JSON.parse(JSON.stringify(draftPoints));
+    p.customEdges = JSON.parse(JSON.stringify(draftEdges));
+    p.fullOrder = true;
+    refreshPlateMesh(p);
+    refreshObjectList();
+    updatePropsPanel();
+    showToast(`「${name}」を図面から更新しました`);
+  } else {
+    // Create new plate with custom shape
+    const plate = addPlate({ name, width: w, height: h, thickness, color });
+    plate.customPoints = JSON.parse(JSON.stringify(draftPoints));
+    plate.customEdges = JSON.parse(JSON.stringify(draftEdges));
+    plate.fullOrder = true;
+    refreshPlateMesh(plate);
+    showToast(`「${name}」を図面から追加しました`);
+  }
+  closeDraftEditor();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════════
+initThree();
+
+// Add sample plates
+addPlate({ name: '板A', width: 200, height: 150, thickness: 3, color: '#88ccff', x: -100, y: 0, z: -75 });
+addPlate({ name: '板B', width: 150, height: 100, thickness: 5, color: '#ffa070', x: 50, y: 0, z: -50 });
+
+showToast('AcrylCAD 起動完了 — Alt+ドラッグで回転、右ドラッグでパン、ホイールでズーム');
+</script>
+</body>
+</html>
